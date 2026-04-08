@@ -5,7 +5,7 @@
 
 // Supabase Configuration
 const SUPABASE_URL = 'https://fmhmqlamcxihqppromxc.supabase.co';
-const SUPABASE_KEY = 'sbp_2d595e6cbb09e2364246a71d5cf66ab6955d3436';
+
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ====================== STATE ======================
