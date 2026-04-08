@@ -6,7 +6,7 @@
 // Supabase Configuration
 const SUPABASE_URL = 'https://fmhmqlamcxihqppromxc.supabase.co';
 const SUPABASE_KEY = 'sbp_2d595e6cbb09e2364246a71d5cf66ab6955d3436';
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ====================== STATE ======================
 const STATE = {
@@ -73,7 +73,7 @@ async function saveRecordsToDB(records) {
     // Para simplificar, deletamos registros do mês atual e reinserimos (ou fazemos upsert)
     // No entanto, o mais performático é sincronizar apenas novos/alterados.
     // Para este MVP, vamos inserir apenas o registro novo no ponto de criação.
-    const { error } = await supabase.from('production_records').upsert(records);
+    const { error } = await sb.from('production_records').upsert(records);
     if (error) throw error;
   } catch (err) {
     console.error('Erro ao salvar registros:', err);
@@ -85,7 +85,7 @@ async function loadDataFromDB() {
     const currentMonth = STATE.config.month;
 
     // 1. Carregar Config/Metas do mês
-    const { data: configData, error: configErr } = await supabase
+    const { data: configData, error: configErr } = await sb
       .from('config_meta')
       .select('*')
       .eq('month', currentMonth)
@@ -105,7 +105,7 @@ async function loadDataFromDB() {
     }
 
     // 2. Carregar Registros do mês
-    const { data: recordsData, error: recordsErr } = await supabase
+    const { data: recordsData, error: recordsErr } = await sb
       .from('production_records')
       .select('*')
       .gte('date', `${currentMonth}-01`)
@@ -124,7 +124,7 @@ async function loadDataFromDB() {
     }
 
     // 3. Carregar Equipamentos
-    const { data: equipData, error: equipErr } = await supabase
+    const { data: equipData, error: equipErr } = await sb
       .from('equipment_status')
       .select('*');
     if (equipData) {
@@ -755,7 +755,7 @@ async function updateEquipStatus(idx, val) {
 
 async function saveEquipToDB(eq) {
   try {
-    const { error } = await supabase.from('equipment_status').upsert({
+    const { error } = await sb.from('equipment_status').upsert({
       name: eq.name,
       status: eq.status
     });
@@ -769,7 +769,7 @@ async function removeEquipment(idx) {
   const eq = STATE.equipment[idx];
   if (!confirm(`Remover "${eq.name}" do banco de dados?`)) return;
   try {
-    const { error } = await supabase.from('equipment_status').delete().eq('name', eq.name);
+    const { error } = await sb.from('equipment_status').delete().eq('name', eq.name);
     if (error) throw error;
     STATE.equipment.splice(idx, 1);
     renderEquipmentSettings();
@@ -782,7 +782,7 @@ async function removeEquipment(idx) {
 async function addEquipment() {
   const newEq = { name: 'Novo Equipamento ' + Date.now(), status: 'green' };
   try {
-    const { data, error } = await supabase.from('equipment_status').insert(newEq).select();
+    const { data, error } = await sb.from('equipment_status').insert(newEq).select();
     if (error) throw error;
     STATE.equipment.push({ id: data[0].id, name: data[0].name, status: data[0].status });
     renderEquipmentSettings();
@@ -822,7 +822,7 @@ async function saveSettings() {
   STATE.config.progAcum        = parseInt(document.getElementById('configProgAcum').value)  || 0;
 
   try {
-    const { error } = await supabase.from('config_meta').upsert({
+    const { error } = await sb.from('config_meta').upsert({
       month: STATE.config.month,
       meta_total: STATE.config.metaTotal,
       meta_tpm: STATE.config.metaTPM,
@@ -918,7 +918,7 @@ async function saveManualEntries(area) {
   if (newRecords.length === 0) return;
 
   try {
-    const { data, error } = await supabase.from('production_records').insert(newRecords).select();
+    const { data, error } = await sb.from('production_records').insert(newRecords).select();
     if (error) throw error;
     
     // Sync local state
@@ -1031,7 +1031,7 @@ function filterTable() { renderDataTable(); }
 async function deleteRecord(id) {
   if (!confirm('Remover este registro permanentemente?')) return;
   try {
-    const { error } = await supabase.from('production_records').delete().eq('id', id);
+    const { error } = await sb.from('production_records').delete().eq('id', id);
     if (error) throw error;
     STATE.records = STATE.records.filter(r => String(r.id) !== String(id));
     renderDataTable();
