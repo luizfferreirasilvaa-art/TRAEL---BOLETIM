@@ -90,9 +90,9 @@ async function loadDataFromDB() {
       .from('config_meta')
       .select('*')
       .eq('month', currentMonth)
-      .single();
+      .maybeSingle();
     
-    if (configData) {
+    if (configData && !configErr) {
       STATE.config = {
         ...STATE.config,
         metaTotal: configData.meta_total,
@@ -121,7 +121,7 @@ async function loadDataFromDB() {
         real: r.real,
         desc: r.description, // Mapeia description para desc
         area: r.area,        // Vital para filtragem
-        coreType: r.core_type, // Vital para Distribuição
+        coreType: r.core_type === 'JC-TRI' ? 'JC' : r.core_type, // Corrige legados JC-TRIF
         source: r.origin
       }));
     }
@@ -1040,8 +1040,8 @@ function parseXLSXRows(rows, area) {
       const mappings = [
         { key: 'Enrolado', type: 'ENR' },
         { key: 'Convencional', type: 'EMP' },
-        { key: 'JC-TRIF', type: 'JC-TRI' },
-        { key: 'JC', type: 'JC-TRI' },
+        { key: 'JC-TRIF', type: 'JC' },
+        { key: 'JC', type: 'JC' },
         { key: 'REP - LAB', type: 'LAB' }
       ];
 
