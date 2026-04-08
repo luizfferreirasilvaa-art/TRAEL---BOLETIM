@@ -952,7 +952,7 @@ async function handleFileUpload(event, area) {
       const rows = XLSX.utils.sheet_to_json(firstSheet);
 
       const newRecords = parseXLSXRows(rows, area);
-      const { data: dbData, error } = await supabase.from('production_records').insert(newRecords).select();
+      const { data: dbData, error } = await sb.from('production_records').insert(newRecords).select();
       if (error) throw error;
 
       dbData.forEach(r => {
