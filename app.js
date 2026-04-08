@@ -975,18 +975,50 @@ async function handleFileUpload(event, area) {
 
 function parseXLSXRows(rows, area) {
   return rows.map(row => {
-    const desc = row['Descrição'] || row['OS'] || '';
+    // Detecção das colunas da planilha do usuário
+    const dateRaw = row['DATA LAB'] || row['Data'] || row['DATA'];
+    const desc    = row['DESCRIÇÃO'] || row['Descrição'] || row['OS'] || '';
+    const lineVal = row['Linha'] || row['LINHA'] || (area === 'distrib' ? 'TPD' : 'TPM');
+    const qteVal  = row['QTDE'] || row['Qtde'] || row['Realizado'] || row['Real'] || row['Prog'] || 0;
+
+    // Se a planilha tiver 'DATA LAB' ou 'QTDE', assumimos que é a planilha MF e forçamos a área
+    const isSpecialSheet = !!(row['DATA LAB'] || row['QTDE']);
+    const finalArea = isSpecialSheet ? 'forca' : area;
+
     return {
-      date: row['Data'] || todayDateStr(),
-      line: row['Linha'] || (area === 'distrib' ? 'TPD' : 'TPM'),
-      prog: parseInt(row['Programado'] || row['Prog']) || 0,
-      real: parseInt(row['Realizado'] || row['Real']) || 0,
+      date: parseDateBR(dateRaw) || todayDateStr(),
+      line: lineVal,
+      prog: isSpecialSheet ? 0 : (parseInt(row['Programado'] || row['Prog']) || 0),
+      real: parseInt(qteVal) || 0,
       description: desc,
-      area: area,
-      core_type: area === 'distrib' ? detectCoreType(desc) : null,
+      area: finalArea,
+      core_type: finalArea === 'distrib' ? detectCoreType(desc) : null,
       origin: 'excel'
     };
-  });
+  }).filter(r => r.real > 0);
+}
+
+function parseDateBR(val) {
+  if (!val) return null;
+  const str = String(val).toLowerCase().trim();
+  
+  // Caso 1: YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+
+  // Caso 2: DD/abr
+  const parts = str.split('/');
+  if (parts.length === 2) {
+    const day = parts[0].padStart(2, '0');
+    const monthMap = {
+      jan: '01', fev: '02', mar: '03', abr: '04', mai: '05', jun: '06',
+      jul: '07', ago: '08', set: '09', out: '10', nov: '11', dez: '12'
+    };
+    const mmm = parts[1].substring(0, 3);
+    const month = monthMap[mmm];
+    if (month) return `2026-${month}-${day}`;
+  }
+
+  return null;
 }
 
 // ====================== DATA TABLE ======================
