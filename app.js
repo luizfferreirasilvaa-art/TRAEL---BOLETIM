@@ -5,7 +5,7 @@
 
 // Supabase Configuration
 const SUPABASE_URL = 'https://fmhmqlamcxihqppromxc.supabase.co';
-
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZtaG1xbGFtY3hpaHFwcHJvbXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NjUxNTMsImV4cCI6MjA5MTI0MTE1M30.nUPeRNBZyVyUWedlHjXZSohtp8uHBPkxrDXIyYrFIeg';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ====================== STATE ======================
