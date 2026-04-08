@@ -46,7 +46,7 @@
 /* ---- RESET ---- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { font-size: 16px; scroll-behavior: smooth; }
+html { font-size: 16px; scroll-behavior: smooth; overflow-x: hidden; }
 
 body {
   font-family: 'Inter', system-ui, sans-serif;
@@ -54,7 +54,8 @@ body {
   color: var(--text-primary);
   min-height: 100vh;
   display: flex;
-  overflow-x: hidden;
+  overflow-x: hidden;    /* bloqueia crescimento horizontal em todo o documento */
+  max-width: 100vw;
 }
 
 /* ================================================
@@ -139,12 +140,15 @@ body {
 .main-content {
   margin-left: var(--sidebar-w);
   flex: 1;
+  min-width: 0;          /* impede flex item de crescer além do pai */
+  max-width: calc(100vw - var(--sidebar-w));
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow-x: hidden;    /* bloqueia qualquer crescimento horizontal filho */
 }
 
-.page { display: none; flex-direction: column; flex: 1; }
+.page { display: none; flex-direction: column; flex: 1; min-width: 0; overflow-x: hidden; }
 .page.active { display: flex; }
 
 /* ================================================
@@ -392,6 +396,8 @@ body {
    ================================================ */
 .lines-section {
   padding: 0 28px 20px;
+  overflow: hidden;
+  max-width: 100%;
 }
 
 .section-header {
@@ -517,19 +523,21 @@ body {
   display: flex;
   gap: 20px;
   align-items: flex-start;
-  overflow: hidden;          /* hard stop on horizontal growth */
-  max-width: 100%;           /* never exceed parent */
+  overflow: hidden;
+  width: 100%;             /* nunca excede o pai */
   box-sizing: border-box;
 }
-/* fixed-height div wrapping the canvas */
+/* container de altura fixa — o canvas fica absolutamente posicionado dentro */
 .chart-canvas-wrapper {
   flex: 1;
-  min-width: 0;              /* lets flexbox shrink it */
+  min-width: 0;
   position: relative;
   height: 300px;
   overflow: hidden;
 }
 .chart-canvas-wrapper canvas {
+  position: absolute !important;
+  top: 0; left: 0;
   width: 100% !important;
   height: 100% !important;
 }
