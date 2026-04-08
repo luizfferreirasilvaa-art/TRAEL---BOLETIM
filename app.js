@@ -344,22 +344,23 @@ function renderChart(m) {
   const todayDay = today.getDate();
   const labels = m.dailyData.map(d => d.day);
 
-  const progData  = m.dailyData.map(d => d.prog  || null);
-  const realData  = m.dailyData.map(d => d.real  || null);
-  const acumData  = m.acumData;
+  const progData = m.dailyData.map(d => d.prog || null);
+  const realData = m.dailyData.map(d => d.real || null);
+  const acumData = m.acumData;
 
-  const barColors = m.dailyData.map((d, i) => {
+  const barColors = m.dailyData.map(d => {
     if (d.day === todayDay) return 'rgba(102,187,106,0.9)';
-    if (d.day < todayDay)   return 'rgba(46,125,50,0.65)';
+    if (d.day < todayDay)  return 'rgba(46,125,50,0.65)';
     return 'rgba(46,125,50,0.18)';
   });
-  const progColors = m.dailyData.map((d, i) => {
-    if (d.day <= todayDay) return 'rgba(144,164,174,0.5)';
-    return 'rgba(144,164,174,0.18)';
-  });
+  const progColors = m.dailyData.map(d =>
+    d.day <= todayDay ? 'rgba(144,164,174,0.5)' : 'rgba(144,164,174,0.18)'
+  );
 
+  // Safe destroy — detach from DOM before recreating to avoid resize loop
   if (STATE.chart) {
     STATE.chart.destroy();
+    STATE.chart = null;
   }
 
   STATE.chart = new Chart(ctx, {
@@ -404,12 +405,11 @@ function renderChart(m) {
     },
     options: {
       responsive: true,
-      maintainAspectRatio: true,
+      maintainAspectRatio: false,   // CRITICAL: let the container define the height
+      animation: { duration: 600 },
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: {
-          display: false,
-        },
+        legend: { display: false },
         tooltip: {
           backgroundColor: '#1C2333',
           borderColor: 'rgba(255,255,255,0.1)',
@@ -417,9 +417,7 @@ function renderChart(m) {
           titleColor: '#E6EDF3',
           bodyColor: '#8B949E',
           padding: 10,
-          callbacks: {
-            title: items => `Dia ${items[0].label}`,
-          },
+          callbacks: { title: items => `Dia ${items[0].label}` },
         },
       },
       scales: {
