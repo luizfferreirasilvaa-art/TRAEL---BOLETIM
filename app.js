@@ -84,6 +84,9 @@ async function saveRecordsToDB(records) {
 async function loadDataFromDB() {
   try {
     const currentMonth = STATE.config.month;
+    const year = parseInt(currentMonth.split('-')[0]);
+    const month = parseInt(currentMonth.split('-')[1]);
+    const lastDay = new Date(year, month, 0).getDate();
 
     // 1. Carregar Config/Metas do mês
     const { data: configData, error: configErr } = await sb
@@ -109,7 +112,8 @@ async function loadDataFromDB() {
     const { data: recordsData, error: recordsErr } = await sb
       .from('production_records')
       .select('*')
-      .like('date', `${currentMonth}-%`);
+      .gte('date', `${currentMonth}-01`)
+      .lte('date', `${currentMonth}-${lastDay}`);
     
     if (recordsData) {
       STATE.records = recordsData.map(r => ({
@@ -959,11 +963,17 @@ async function handleFileUpload(event, area) {
       // Substituição Inteligente (deleta carregamentos de planilhas anteriores deste mês/área)
       const currentMonth = STATE.config.month;
       const targetArea = newRecords[0].area; 
+      
+      const year = parseInt(currentMonth.split('-')[0]);
+      const month = parseInt(currentMonth.split('-')[1]);
+      const lastDay = new Date(year, month, 0).getDate();
+
       const { error: delErr } = await sb.from('production_records')
         .delete()
         .eq('area', targetArea)
         .like('origin', 'excel%')
-        .like('date', `${currentMonth}-%`);
+        .gte('date', `${currentMonth}-01`)
+        .lte('date', `${currentMonth}-${lastDay}`);
 
       const { data: dbData, error: insErr } = await sb.from('production_records').insert(newRecords).select();
       if (insErr) throw insErr;
