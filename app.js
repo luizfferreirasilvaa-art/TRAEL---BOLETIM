@@ -1,7 +1,12 @@
 /* =====================================================
    TRAEL DASHBOARD — app.js
-   State Management, Data, Chart, Upload, Settings
+   Supabase Integration, State, Chart, Upload, Settings
    ===================================================== */
+
+// Supabase Configuration
+const SUPABASE_URL = 'https://fmhmqlamcxihqppromxc.supabase.co';
+const SUPABASE_KEY = 'sbp_2d595e6cbb09e2364246a71d5cf66ab6955d3436';
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ====================== STATE ======================
 const STATE = {
@@ -68,7 +73,83 @@ function seedSampleData() {
   }
 }
 
-// ====================== PERSIST / LOAD ======================
+// ====================== DB PERSISTENCE (SUPABASE) ======================
+
+async function saveRecordsToDB(records) {
+  try {
+    // Para simplificar, deletamos registros do mês atual e reinserimos (ou fazemos upsert)
+    // No entanto, o mais performático é sincronizar apenas novos/alterados.
+    // Para este MVP, vamos inserir apenas o registro novo no ponto de criação.
+    const { error } = await supabase.from('production_records').upsert(records);
+    if (error) throw error;
+  } catch (err) {
+    console.error('Erro ao salvar registros:', err);
+  }
+}
+
+async function loadDataFromDB() {
+  try {
+    const currentMonth = STATE.config.month;
+
+    // 1. Carregar Config/Metas do mês
+    const { data: configData, error: configErr } = await supabase
+      .from('config_meta')
+      .select('*')
+      .eq('month', currentMonth)
+      .single();
+    
+    if (configData) {
+      STATE.config = {
+        ...STATE.config,
+        metaTotal: configData.meta_total,
+        metaTPM: configData.meta_tpm,
+        metaTPD: configData.meta_tpd,
+        metaTPS: configData.meta_tps,
+        diasUteis: configData.dias_uteis,
+        diasTrabalhados: configData.dias_trabalhados,
+        progAcum: configData.prog_acumulado
+      };
+    }
+
+    // 2. Carregar Registros do mês
+    const { data: recordsData, error: recordsErr } = await supabase
+      .from('production_records')
+      .select('*')
+      .gte('date', `${currentMonth}-01`)
+      .lte('date', `${currentMonth}-31`);
+    
+    if (recordsData) {
+      STATE.records = recordsData.map(r => ({
+        id: r.id,
+        date: r.date,
+        line: r.line,
+        prog: r.prog,
+        real: r.real,
+        desc: r.description,
+        source: r.origin
+      }));
+    }
+
+    // 3. Carregar Equipamentos
+    const { data: equipData, error: equipErr } = await supabase
+      .from('equipment_status')
+      .select('*');
+    if (equipData) {
+      STATE.equipment = equipData.map(e => ({
+        id: e.id,
+        name: e.name,
+        status: e.status
+      }));
+    }
+
+    renderDashboard();
+  } catch (err) {
+    console.warn('Erro ao carregar do Supabase, usando localStorage/amostra', err);
+    loadFromStorage();
+  }
+}
+
+// Manter localStorage como redundância/cache
 function saveToStorage() {
   localStorage.setItem('trael_config',    JSON.stringify(STATE.config));
   localStorage.setItem('trael_records',   JSON.stringify(STATE.records));
@@ -80,13 +161,10 @@ function loadFromStorage() {
   try {
     const cfg = localStorage.getItem('trael_config');
     if (cfg) STATE.config = { ...STATE.config, ...JSON.parse(cfg) };
-
     const rec = localStorage.getItem('trael_records');
     if (rec) STATE.records = JSON.parse(rec);
-
     const eq = localStorage.getItem('trael_equipment');
     if (eq) STATE.equipment = JSON.parse(eq);
-
     const obs = localStorage.getItem('trael_obs');
     if (obs) STATE.obs = JSON.parse(obs);
   } catch (e) {
@@ -511,15 +589,53 @@ function renderEquipmentSettings() {
   });
 }
 
-function updateEquipName(idx, val)   { STATE.equipment[idx].name   = val; }
-function updateEquipStatus(idx, val) { STATE.equipment[idx].status = val; }
-function removeEquipment(idx) {
-  STATE.equipment.splice(idx, 1);
-  renderEquipmentSettings();
+async function updateEquipName(idx, val) { 
+  STATE.equipment[idx].name = val; 
+  await saveEquipToDB(STATE.equipment[idx]);
 }
-function addEquipment() {
-  STATE.equipment.push({ id: Date.now(), name: 'Novo Equipamento', status: 'green' });
-  renderEquipmentSettings();
+
+async function updateEquipStatus(idx, val) { 
+  STATE.equipment[idx].status = val; 
+  await saveEquipToDB(STATE.equipment[idx]);
+}
+
+async function saveEquipToDB(eq) {
+  try {
+    const { error } = await supabase.from('equipment_status').upsert({
+      name: eq.name,
+      status: eq.status
+    });
+    if (error) throw error;
+  } catch (err) {
+    console.error('Erro ao salvar equipamento:', err);
+  }
+}
+
+async function removeEquipment(idx) {
+  const eq = STATE.equipment[idx];
+  if (!confirm(`Remover "${eq.name}" do banco de dados?`)) return;
+  try {
+    const { error } = await supabase.from('equipment_status').delete().eq('name', eq.name);
+    if (error) throw error;
+    STATE.equipment.splice(idx, 1);
+    renderEquipmentSettings();
+    renderEquipment();
+  } catch (err) {
+    alert('Erro ao remover equipamento: ' + err.message);
+  }
+}
+
+async function addEquipment() {
+  const newEq = { name: 'Novo Equipamento ' + Date.now(), status: 'green' };
+  try {
+    const { data, error } = await supabase.from('equipment_status').insert(newEq).select();
+    if (error) throw error;
+    STATE.equipment.push({ id: data[0].id, name: data[0].name, status: data[0].status });
+    renderEquipmentSettings();
+    renderEquipment();
+  } catch (err) {
+    alert('Erro ao adicionar equipamento: ' + err.message);
+  }
 }
 
 // ====================== SETTINGS PAGE ======================
@@ -541,7 +657,7 @@ function setValue(id, val) {
   if (el) el.value = val;
 }
 
-function saveSettings() {
+async function saveSettings() {
   STATE.config.month           = document.getElementById('configMonth').value;
   STATE.config.metaTotal       = parseInt(document.getElementById('configMetaTotal').value) || 0;
   STATE.config.metaTPM         = parseInt(document.getElementById('configMetaTPM').value)   || 0;
@@ -551,9 +667,24 @@ function saveSettings() {
   STATE.config.diasTrabalhados = parseInt(document.getElementById('configDiasTrabalhados').value) || 0;
   STATE.config.progAcum        = parseInt(document.getElementById('configProgAcum').value)  || 0;
 
-  saveToStorage();
-  showStatus('settingsStatus', '✅ Configurações salvas com sucesso!', 'success');
-  renderDashboard();
+  try {
+    const { error } = await supabase.from('config_meta').upsert({
+      month: STATE.config.month,
+      meta_total: STATE.config.metaTotal,
+      meta_tpm: STATE.config.metaTPM,
+      meta_tpd: STATE.config.metaTPD,
+      meta_tps: STATE.config.metaTPS,
+      dias_uteis: STATE.config.diasUteis,
+      dias_trabalhados: STATE.config.diasTrabalhados,
+      prog_acumulado: STATE.config.progAcum
+    });
+    if (error) throw error;
+    saveToStorage();
+    showStatus('settingsStatus', '✅ Configurações salvas no Supabase!', 'success');
+    renderDashboard();
+  } catch (err) {
+    showStatus('settingsStatus', '🚨 Erro ao salvar no banco: ' + err.message, 'error');
+  }
 }
 
 function resetSettings() {
@@ -605,9 +736,10 @@ function removeManualEntry(idx) {
   if (el) el.remove();
 }
 
-function saveManualEntries() {
+async function saveManualEntries() {
   const entries = document.querySelectorAll('.manual-entry');
-  let saved = 0, errors = 0;
+  let newRecords = [];
+  let errors = 0;
 
   entries.forEach(entry => {
     const idx = entry.dataset.entry;
@@ -619,19 +751,47 @@ function saveManualEntries() {
 
     if (!date || !line) { errors++; return; }
 
-    STATE.records.push({ id: Date.now() + Math.random(), date, line, prog, real, desc, source: 'manual' });
-    saved++;
+    newRecords.push({
+      date,
+      line,
+      prog,
+      real,
+      description: desc,
+      origin: 'manual'
+    });
   });
 
-  saveToStorage();
-  renderDataTable();
-  renderDashboard();
+  if (newRecords.length > 0) {
+    try {
+      const { data, error } = await supabase.from('production_records').insert(newRecords).select();
+      if (error) throw error;
+      
+      // Update local state with the returned records (including IDs)
+      data.forEach(r => {
+        STATE.records.push({
+          id: r.id,
+          date: r.date,
+          line: r.line,
+          prog: r.prog,
+          real: r.real,
+          desc: r.description,
+          source: r.origin
+        });
+      });
 
-  if (errors > 0) {
-    showStatus('manualStatus', `⚠️ ${saved} registro(s) salvos. ${errors} registro(s) com campos obrigatórios faltando (Data e Linha).`, 'error');
-  } else {
-    showStatus('manualStatus', `✅ ${saved} registro(s) salvos com sucesso!`, 'success');
-    clearManualForm();
+      saveToStorage();
+      renderDataTable();
+      renderDashboard();
+      
+      if (errors > 0) {
+        showStatus('manualStatus', `⚠️ ${newRecords.length} registro(s) salvos no banco. ${errors} pendentes.`, 'error');
+      } else {
+        showStatus('manualStatus', `✅ ${newRecords.length} registro(s) salvos no Supabase!`, 'success');
+        clearManualForm();
+      }
+    } catch (err) {
+      showStatus('manualStatus', '🚨 Erro ao salvar no banco: ' + err.message, 'error');
+    }
   }
 }
 
@@ -698,13 +858,12 @@ function handleFileUpload(event) {
   else reader.readAsArrayBuffer(file);
 }
 
-function parseXLSXRows(rows, filename) {
+async function parseXLSXRows(rows, filename) {
   if (rows.length < 2) {
     showStatus('uploadStatus', '⚠️ Planilha vazia ou sem dados.', 'error');
     return;
   }
 
-  // Try to detect columns: Date, Line, Prog, Real, Desc
   const header = rows[0].map(h => String(h || '').toLowerCase().trim());
   const colMap = {
     date: findCol(header, ['data','date','dt']),
@@ -714,7 +873,7 @@ function parseXLSXRows(rows, filename) {
     desc: findCol(header, ['descricao','desc','os','ordem']),
   };
 
-  let imported = 0;
+  let recordsToInsert = [];
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
     if (!row || row.length === 0) continue;
@@ -725,10 +884,8 @@ function parseXLSXRows(rows, filename) {
     const real = colMap.real >= 0 ? (Number(row[colMap.real]) || 0) : 0;
     const desc = colMap.desc >= 0 ? String(row[colMap.desc] || '') : '';
 
-    // Parse date
     if (date) {
       if (typeof date === 'number') {
-        // Excel serial date
         const jsDate = new Date(Math.round((date - 25569) * 86400 * 1000));
         const y = jsDate.getUTCFullYear();
         const m = String(jsDate.getUTCMonth() + 1).padStart(2,'0');
@@ -736,28 +893,48 @@ function parseXLSXRows(rows, filename) {
         date = `${y}-${m}-${d}`;
       } else {
         date = String(date).trim();
-        // handle dd/mm/yyyy
         const parts = date.split('/');
         if (parts.length === 3) date = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
       }
     }
 
-    // Map line abbreviations
     if (line.includes('MED') || line.includes('MÉDIA') || line === 'TPM') line = 'TPM';
     else if (line.includes('DIST') || line === 'TPD') line = 'TPD';
     else if (line.includes('SECO') || line === 'TPS') line = 'TPS';
 
     if (!date || !['TPM','TPD','TPS'].includes(line)) continue;
 
-    STATE.records.push({ id: Date.now() + Math.random(), date, line, prog, real, desc, source: `xlsx:${filename}` });
-    imported++;
+    recordsToInsert.push({
+      date,
+      line,
+      prog,
+      real,
+      description: desc,
+      origin: `xlsx:${filename}`
+    });
   }
 
-  saveToStorage();
-  renderDataTable();
-  renderDashboard();
-  showStatus('uploadStatus', `✅ ${imported} registro(s) importados de "${filename}" com sucesso!`, 'success');
-  showUploadPreview(rows.slice(0, 6), rows[0]);
+  if (recordsToInsert.length > 0) {
+    try {
+      const { data, error } = await supabase.from('production_records').insert(recordsToInsert).select();
+      if (error) throw error;
+      
+      // Update local state
+      data.forEach(r => {
+        STATE.records.push({
+          id: r.id, date: r.date, line: r.line, prog: r.prog, real: r.real, desc: r.description, source: r.origin
+        });
+      });
+
+      saveToStorage();
+      renderDataTable();
+      renderDashboard();
+      showStatus('uploadStatus', `✅ ${recordsToInsert.length} registro(s) importados do Supabase!`, 'success');
+      showUploadPreview(rows.slice(0, 6), rows[0]);
+    } catch (err) {
+      showStatus('uploadStatus', `🚨 Erro ao salvar no banco: ${err.message}`, 'error');
+    }
+  }
 }
 
 function parseCSV(text, filename) {
@@ -845,12 +1022,19 @@ function renderDataTable() {
 
 function filterTable() { renderDataTable(); }
 
-function deleteRecord(id) {
-  if (!confirm('Remover este registro?')) return;
-  STATE.records = STATE.records.filter(r => String(r.id) !== String(id));
-  saveToStorage();
-  renderDataTable();
-  renderDashboard();
+async function deleteRecord(id) {
+  if (!confirm('Remover este registro permanentemente do banco de dados?')) return;
+  try {
+    const { error } = await supabase.from('production_records').delete().eq('id', id);
+    if (error) throw error;
+    
+    STATE.records = STATE.records.filter(r => String(r.id) !== String(id));
+    saveToStorage();
+    renderDataTable();
+    renderDashboard();
+  } catch (err) {
+    alert('Erro ao excluir: ' + err.message);
+  }
 }
 
 function exportData() {
@@ -882,20 +1066,20 @@ function showStatus(id, msg, type) {
 }
 
 // ====================== INIT ======================
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  // 1. Initial local load
   loadFromStorage();
 
-  // If no records exist, seed sample data
+  // 2. Try Supabase cloud load
+  await loadDataFromDB();
+
+  // 3. Fallback/Defaults
   if (STATE.records.length === 0) {
     seedSampleData();
-    saveToStorage();
   }
-
-  // If no month set, default to current
   if (!STATE.config.month) {
     const now = new Date();
     STATE.config.month = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-    saveToStorage();
   }
 
   initDropZone();
