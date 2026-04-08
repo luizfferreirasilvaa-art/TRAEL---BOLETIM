@@ -378,7 +378,6 @@ function renderDashboardDistrib() {
   const cfg = STATE.config;
 
   // Header & KPIs
-  setText('metaDistribValue', cfg.metaTPD);
   setText('kpiEnrMedia', m.medias.ENR.toFixed(1));
   setText('kpiJcMedia',  m.medias.JC.toFixed(1));
   setText('kpiEmpMedia', m.medias.EMP.toFixed(1));
@@ -402,7 +401,6 @@ function renderDashboardForca() {
   const m = computeForcaMetrics();
   const cfg = STATE.config;
 
-  setText('metaForcaValue', cfg.metaTotal);
   setText('forcaPct', Math.round(m.pct) + '%');
 
   renderForcaCharts(m);
@@ -1083,7 +1081,33 @@ function showStatus(id, msg, type) {
 }
 
 // ====================== INIT ======================
+// --- THEME MANAGEMENT ---
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light-theme');
+  localStorage.setItem('trael-theme', isLight ? 'light' : 'dark');
+  updateThemeIcons(isLight);
+}
+
+function updateThemeIcons(isLight) {
+  const icon = isLight ? '🌙' : '☀️';
+  const ids = ['themeIconDistrib', 'themeIconForca'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerText = icon;
+  });
+}
+
+function initTheme() {
+  const saved = localStorage.getItem('trael-theme');
+  const isLight = saved === 'light';
+  if (isLight) {
+    document.body.classList.add('light-theme');
+  }
+  updateThemeIcons(isLight);
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
+  initTheme();
   // Update UI immediately (cached values)
   loadFromStorage();
   updateClock();

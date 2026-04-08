@@ -43,6 +43,19 @@
   --duration: 0.25s;
 }
 
+/* --- LIGHT THEME OVERRIDES --- */
+body.light-theme {
+  --bg-deep: #F0F2F5;
+  --bg-dark: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-card-alt: #F8F9FA;
+  --bg-input: #FFFFFF;
+  --border: rgba(0,0,0,0.1);
+  --text-primary: #1C1E21;
+  --text-secondary: #606770;
+  --text-muted: #8D949E;
+}
+
 /* ---- RESET ---- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -204,6 +217,31 @@ body {
   display: flex;
   align-items: center;
   gap: 20px;
+}
+
+/* THEME TOGGLE */
+.theme-toggle {
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border);
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 20px;
+  transition: all var(--duration) var(--ease);
+  color: var(--warning);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.theme-toggle:hover {
+  transform: scale(1.05);
+  background: var(--border);
+}
+body.light-theme .theme-toggle {
+  color: #5C6BC0;
+  background: #E8EAF6;
 }
 
 .date-block {
