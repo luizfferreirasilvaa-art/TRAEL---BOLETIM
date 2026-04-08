@@ -107,35 +107,35 @@
       </div>
     </section>
 
-    <section class="chart-section bi-section">
-      <div class="bi-container">
+    <div class="chart-grid-blocks" style="padding: 0 28px;">
+      <div class="chart-card">
         <div class="bi-chart-main">
           <h3 class="section-title">📊 PRODUÇÃO - QUANTIDADE (DISTRIBUIÇÃO)</h3>
           <div class="chart-canvas-wrapper" style="height: 350px;"><canvas id="chartDistribQty"></canvas></div>
         </div>
-        <div class="bi-table-wrapper" id="distribTableContainer"></div>
-      </div>
-                    <div class="upload-card">
-        <h3 class="upload-section-title">🕒 Registros Recentes</h3>
-        <div class="table-filters" style="margin-bottom:15px; display:flex; gap:10px;">
-           <select class="form-input" id="filterLine" onchange="filterTable()" style="max-width:200px">
-              <option value="">Todas as Linhas</option>
-              <option value="TPM">TPM</option>
-              <option value="TPD">TPD</option>
-              <option value="TPS">TPS</option>
-           </select>
-           <button class="btn-export" onclick="exportData()">📥 Exportar CSV</button>
+        <div class="bi-table-wrapper" id="distribTableContainer" style="margin-top: 20px;"></div>
+        
+        <div class="upload-card" style="margin-top: 30px; border-top: 1px solid var(--border); padding-top: 20px;">
+          <h3 class="upload-section-title">🕒 Registros Recentes</h3>
+          <div class="table-filters" style="margin-bottom:15px; display:flex; gap:10px;">
+             <select class="form-input" id="filterLine" onchange="filterTable()" style="max-width:200px">
+                <option value="">Todas as Linhas</option>
+                <option value="TPM">TPM</option>
+                <option value="TPD">TPD</option>
+                <option value="TPS">TPS</option>
+             </select>
+             <button class="btn-export" onclick="exportData()">📥 Exportar CSV</button>
+          </div>
         </div>
-    </section>
+      </div>
 
-    <section class="chart-section bi-section">
-      <div class="bi-container">
+      <div class="chart-card">
         <div class="bi-chart-pct">
           <h3 class="section-title">📈 PERCENTUAL DO PLANEJADO (%)</h3>
           <div class="chart-canvas-wrapper" style="height: 300px;"><canvas id="chartDistribPct"></canvas></div>
         </div>
       </div>
-    </section>
+    </div>
 
     <section class="report-section">
        <div class="report-card">
