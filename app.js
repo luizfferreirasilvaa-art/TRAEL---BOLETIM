@@ -952,20 +952,29 @@ async function handleFileUpload(event, area) {
       const rows = XLSX.utils.sheet_to_json(firstSheet);
 
       const newRecords = parseXLSXRows(rows, area);
-      const { data: dbData, error } = await sb.from('production_records').insert(newRecords).select();
-      if (error) throw error;
+      if (newRecords.length === 0) {
+        showStatus(statusId, '⚠️ Nenhum dado diário encontrado.', 'warning');
+        return;
+      }
 
-      dbData.forEach(r => {
-        STATE.records.push({
-          id: r.id, date: r.date, line: r.line, prog: r.prog, real: r.real, 
-          desc: r.description, area: r.area, coreType: r.core_type, source: r.origin
-        });
-      });
+      // Substituição Inteligente (deleta carregamentos de planilhas anteriores deste mês/área)
+      const currentMonth = STATE.config.month;
+      const targetArea = newRecords[0].area; 
+      
+      await sb.from('production_records')
+        .delete()
+        .eq('area', targetArea)
+        .like('origin', 'excel%')
+        .gte('date', `${currentMonth}-01`)
+        .lte('date', `${currentMonth}-31`);
 
-      showStatus(statusId, `✅ ${dbData.length} registros importados com sucesso!`, 'success');
-      renderDataTable();
-      if (area === 'distrib') renderDashboardDistrib();
-      else renderDashboardForca();
+      const { data: dbData, error: insErr } = await sb.from('production_records').insert(newRecords).select();
+      if (insErr) throw insErr;
+
+      // Recarrega tudo do banco para garantir integridade após a substituição
+      await loadDataFromDB();
+
+      showStatus(statusId, `✅ ${dbData.length} registros substituídos com sucesso!`, 'success');
     } catch (err) {
       showStatus(statusId, '🚨 Erro na importação: ' + err.message, 'error');
     }
@@ -996,6 +1005,7 @@ function parseXLSXRows(rows, area) {
   if (isConsolidated) {
     const currentYear = new Date().getFullYear();
     const currentMonth = STATE.config.month || todayDateStr().substring(0, 7);
+    let lastSeenDate = null;
     
     const parsedData = cleanRows.flatMap((row, rowIndex) => {
       // Normalizar chaves da linha atual
@@ -1004,8 +1014,12 @@ function parseXLSXRows(rows, area) {
 
       // 1. Data
       const dateKey = Object.keys(cleanRow).find(k => k.toLowerCase() === 'data' || k.toLowerCase() === 'dia' || k === 'A' || k === '__EMPTY' || k === 'Data');
-      let date = todayDateStr();
-      const valDateRaw = cleanRow[dateKey];
+      
+      let valDateRaw = cleanRow[dateKey];
+      if (!valDateRaw && lastSeenDate) valDateRaw = lastSeenDate;
+      else if (valDateRaw) lastSeenDate = valDateRaw;
+
+      let date = `${currentMonth}-01`;
       
       if (valDateRaw) {
         const strDate = String(valDateRaw);
@@ -1073,19 +1087,23 @@ function parseXLSXRows(rows, area) {
     return parsedData;
   }
 
+  let lastSeenDatePadrao = null;
   // Lógica padrão
   return cleanRows.map(row => {
     const cleanRow = {};
     Object.keys(row).forEach(k => cleanRow[String(k).trim()] = row[k]);
 
-    const dateRaw = cleanRow['DATA LAB'] || cleanRow['Data'] || cleanRow['DATA'] || cleanRow['Dia'];
+    let dateRaw = cleanRow['DATA LAB'] || cleanRow['Data'] || cleanRow['DATA'] || cleanRow['Dia'];
+    if (!dateRaw && lastSeenDatePadrao) dateRaw = lastSeenDatePadrao;
+    else if (dateRaw) lastSeenDatePadrao = dateRaw;
     const desc    = cleanRow['DESCRIÇÃO'] || cleanRow['Descrição'] || cleanRow['OS'] || '';
     const lineVal = cleanRow['Linha'] || cleanRow['LINHA'] || (area === 'distrib' ? 'TPD' : 'TPM');
     const qteVal  = cleanRow['QTDE'] || cleanRow['Qtde'] || cleanRow['Realizado'] || cleanRow['Real'] || cleanRow['Executado'] || 0;
 
-    let date = parseDateBR(dateRaw) || todayDateStr();
+    const cMonth = STATE.config.month || todayDateStr().substring(0, 7);
+    let date = parseDateBR(dateRaw) || `${cMonth}-01`;
     if (dateRaw && !isNaN(dateRaw) && parseInt(dateRaw) < 32) {
-      date = `${STATE.config.month || todayDateStr().substring(0, 7)}-${String(dateRaw).padStart(2, '0')}`;
+      date = `${cMonth}-${String(dateRaw).padStart(2, '0')}`;
     }
 
     return {
