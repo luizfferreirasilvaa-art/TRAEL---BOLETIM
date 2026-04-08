@@ -118,7 +118,9 @@ async function loadDataFromDB() {
         line: r.line,
         prog: r.prog,
         real: r.real,
-        desc: r.description,
+        desc: r.description, // Mapeia description para desc
+        area: r.area,        // Vital para filtragem
+        coreType: r.core_type, // Vital para Distribuição
         source: r.origin
       }));
     }
@@ -135,7 +137,7 @@ async function loadDataFromDB() {
       }));
     }
 
-    renderDashboard();
+    showPage('distribuicao');
   } catch (err) {
     console.warn('Erro ao carregar do Supabase, usando localStorage/amostra', err);
     loadFromStorage();
@@ -176,10 +178,14 @@ function showPage(page) {
   if (targetPage) targetPage.classList.add('active');
   if (navBtn) navBtn.classList.add('active');
 
-  if (page === 'distribuicao') renderDashboardDistrib();
-  if (page === 'forca-seco')   renderDashboardForca();
-  if (page === 'settings')     renderSettingsPage();
-  if (page === 'upload')       { renderDataTable(); initializeManualEntries(); }
+  try {
+    if (page === 'distribuicao') renderDashboardDistrib();
+    if (page === 'forca-seco')   renderDashboardForca();
+    if (page === 'settings')     renderSettingsPage();
+    if (page === 'upload')       { renderDataTable(); initializeManualEntries(); }
+  } catch (err) {
+    console.warn(`Erro ao renderizar página ${page}:`, err);
+  }
 }
 
 function switchUploadTab(area) {
