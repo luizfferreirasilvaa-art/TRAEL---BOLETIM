@@ -817,6 +817,8 @@ async function saveSettings() {
   STATE.config.diasTrabalhados = parseInt(document.getElementById('configDiasTrabalhados').value) || 0;
   STATE.config.progAcum        = parseInt(document.getElementById('configProgAcum').value)  || 0;
 
+  showStatus('settingsStatus', '⏳ Salvando configurações no banco...', 'info');
+
   try {
     const { error } = await sb.from('config_meta').upsert({
       month: STATE.config.month,
@@ -1077,6 +1079,7 @@ function showStatus(id, msg, type) {
   el.style.display = 'block';
   el.className = `upload-status ${type}`;
   el.textContent = msg;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   setTimeout(() => { if(el) el.style.display = 'none'; }, 6000);
 }
 
