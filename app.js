@@ -446,10 +446,10 @@ function renderBITable(m) {
   html += `<th class="bi-avg-col">MÉDIA</th></tr></thead><tbody>`;
 
   const cores = [
-    {id:'ENR', label:'🔵 ENR'},
-    {id:'JC',  label:'💎 JC-TRI'},
-    {id:'EMP', label:'🌲 EMP'},
-    {id:'LAB', label:'🔴 LAB'}
+    {id:'ENR', label:'ENR'},
+    {id:'JC',  label:'JC-TRI'},
+    {id:'EMP', label:'EMP'},
+    {id:'LAB', label:'LAB'}
   ];
 
   cores.forEach(c => {
