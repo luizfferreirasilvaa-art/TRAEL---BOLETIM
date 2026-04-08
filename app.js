@@ -974,6 +974,55 @@ async function handleFileUpload(event, area) {
 }
 
 function parseXLSXRows(rows, area) {
+  // Verificamos se é uma planilha consolidada de Distribuição pesquisando por cabeçalhos típicos
+  const firstRow = rows[0] || {};
+  const isConsolidated = Object.keys(firstRow).some(k => 
+    k.includes('Realizado Enrolado') || k.includes('Realizado Convencional') || k.includes('Realizado JC')
+  );
+
+  if (isConsolidated) {
+    return rows.flatMap(row => {
+      const dateRaw = row['Data'] || row['DATA'] || row['Dia'] || row['DIA'];
+      const date = parseDateBR(dateRaw) || todayDateStr();
+      const records = [];
+
+      // Mapeamento de blocos de colunas (Realizado e Meta)
+      const mappings = [
+        { key: 'Enrolado', type: 'ENR' },
+        { key: 'Convencional', type: 'EMP' },
+        { key: 'JC-TRI', type: 'JC-TRI' },
+        { key: 'Trifásico', type: 'JC-TRI' }, // Alias comum
+        { key: 'LAB', type: 'LAB' },
+        { key: 'Laboratório', type: 'LAB' }
+      ];
+
+      mappings.forEach(m => {
+        // Busca flexível por colunas que contenham o termo (Ex: "Realizado Enrolado")
+        const colReal = Object.keys(row).find(k => k.includes('Realizado') && k.includes(m.key));
+        const colMeta = Object.keys(row).find(k => k.includes('Meta') && k.includes(m.key));
+        
+        const real = parseInt(row[colReal]) || 0;
+        const prog = parseInt(row[colMeta]) || 0;
+
+        if (real > 0 || prog > 0) {
+          records.push({
+            date,
+            line: m.type,
+            prog: prog,
+            real: real,
+            description: `Produção Consolidada: ${m.key}`,
+            area: 'distrib',
+            core_type: m.type,
+            origin: 'excel_consolidated'
+          });
+        }
+      });
+
+      return records;
+    });
+  }
+
+  // Lógica padrão para Média Força ou Itens Individuais
   return rows.map(row => {
     // Detecção das colunas da planilha do usuário
     const dateRaw = row['DATA LAB'] || row['Data'] || row['DATA'];
@@ -995,7 +1044,7 @@ function parseXLSXRows(rows, area) {
       core_type: finalArea === 'distrib' ? detectCoreType(desc) : null,
       origin: 'excel'
     };
-  }).filter(r => r.real > 0);
+  }).filter(r => r.real > 0 || r.prog > 0);
 }
 
 function parseDateBR(val) {
