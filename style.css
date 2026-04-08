@@ -45,15 +45,38 @@
 
 /* --- LIGHT THEME OVERRIDES --- */
 body.light-theme {
-  --bg-deep: #F0F2F5;
-  --bg-dark: #FFFFFF;
+  --bg-deep: #FFFFFF;
+  --bg-dark: #F5F7F8;
   --bg-card: #FFFFFF;
-  --bg-card-alt: #F8F9FA;
+  --bg-card-alt: #F0F4EF;
   --bg-input: #FFFFFF;
-  --border: rgba(0,0,0,0.1);
-  --text-primary: #1C1E21;
-  --text-secondary: #606770;
-  --text-muted: #8D949E;
+  --border: rgba(0,0,0,0.08);
+  --text-primary: #1A1C1E;
+  --text-secondary: #42474E;
+  --text-muted: #72777F;
+  --sidebar-bg: #FFFFFF;
+}
+
+body.light-theme .dashboard-header {
+  background: #FFFFFF !important;
+}
+
+body.light-theme .sidebar {
+  background: #FFFFFF;
+  border-right: 1px solid var(--border);
+}
+
+body.light-theme .nav-item.active {
+  background: rgba(76, 175, 80, 0.1);
+  color: var(--green-700);
+}
+
+body.light-theme .nav-item {
+  color: #42474E;
+}
+
+body.light-theme .nav-item:hover {
+  background: rgba(0,0,0,0.03);
 }
 
 /* ---- RESET ---- */
