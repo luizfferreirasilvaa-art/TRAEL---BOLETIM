@@ -15,6 +15,7 @@ const STATE = {
     metaTotal: 240,
     metaTPM: 80,
     metaTPD: 100,
+    metaDistribMensal: 100, // Nova meta mensal para Distribuição
     metaTPS: 60,
     diasUteis: 20,
     diasTrabalhados: 10,
@@ -97,7 +98,7 @@ async function loadDataFromDB() {
         metaTotal: configData.meta_total,
         metaTPM: configData.meta_tpm,
         metaTPD: configData.meta_tpd,
-        metaTPS: configData.meta_tps,
+        metaDistribMensal: configData.meta_distrib_mensal || 100,
         diasUteis: configData.dias_uteis,
         diasTrabalhados: configData.dias_trabalhados,
         progAcum: configData.prog_acumulado
@@ -383,6 +384,7 @@ function renderDashboardDistrib() {
   setText('kpiEmpMedia', m.medias.EMP.toFixed(1));
   setText('kpiTotalMedia', m.medias.Total.toFixed(1));
   setText('kpiDistribReject', m.totals.LAB);
+  setText('kpiDistribMetaMensal', cfg.metaDistribMensal);
 
   // Charts
   renderDistribCharts(m);
@@ -424,13 +426,6 @@ function renderDashboardForca() {
          <div class="line-kpis">
            <div class="line-kpi"><span class="lk-label">Prog.</span><span class="lk-val">${cfg.metaTPS}</span></div>
            <div class="line-kpi"><span class="lk-label">Real.</span><span class="lk-val lk-green">${m.totals.TPS}</span></div>
-         </div>
-      </div>
-      <div class="line-card">
-         <div class="line-header"><div class="line-badge line-badge-tpd">TPD</div><span class="line-name">Distribuição (Aux)</span></div>
-         <div class="line-kpis">
-           <div class="line-kpi"><span class="lk-label">Prog.</span><span class="lk-val">${cfg.metaTPD}</span></div>
-           <div class="line-kpi"><span class="lk-label">Real.</span><span class="lk-val lk-green">${m.totals.TPD}</span></div>
          </div>
       </div>
     `;
@@ -804,7 +799,7 @@ function renderSettingsPage() {
   setValue('configMonth',           cfg.month);
   setValue('configMetaTotal',       cfg.metaTotal);
   setValue('configMetaTPM',         cfg.metaTPM);
-  setValue('configMetaTPD',         cfg.metaTPD);
+  setValue('configMetaDistribMensal', cfg.metaDistribMensal);
   setValue('configMetaTPS',         cfg.metaTPS);
   setValue('configDiasUteis',       cfg.diasUteis);
   setValue('configDiasTrabalhados', cfg.diasTrabalhados);
@@ -820,9 +815,9 @@ function setValue(id, val) {
 async function saveSettings() {
   STATE.config.month           = document.getElementById('configMonth').value;
   STATE.config.metaTotal       = parseInt(document.getElementById('configMetaTotal').value) || 0;
-  STATE.config.metaTPM         = parseInt(document.getElementById('configMetaTPM').value)   || 0;
-  STATE.config.metaTPD         = parseInt(document.getElementById('configMetaTPD').value)   || 0;
-  STATE.config.metaTPS         = parseInt(document.getElementById('configMetaTPS').value)   || 0;
+  STATE.config.metaTPM          = parseInt(document.getElementById('configMetaTPM').value)    || 0;
+  STATE.config.metaDistribMensal = parseInt(document.getElementById('configMetaDistribMensal').value) || 0;
+  STATE.config.metaTPS          = parseInt(document.getElementById('configMetaTPS').value)    || 0;
   STATE.config.diasUteis       = parseInt(document.getElementById('configDiasUteis').value) || 1;
   STATE.config.diasTrabalhados = parseInt(document.getElementById('configDiasTrabalhados').value) || 0;
   STATE.config.progAcum        = parseInt(document.getElementById('configProgAcum').value)  || 0;
@@ -832,7 +827,7 @@ async function saveSettings() {
       month: STATE.config.month,
       meta_total: STATE.config.metaTotal,
       meta_tpm: STATE.config.metaTPM,
-      meta_tpd: STATE.config.metaTPD,
+      meta_distrib_mensal: STATE.config.metaDistribMensal,
       meta_tps: STATE.config.metaTPS,
       dias_uteis: STATE.config.diasUteis,
       dias_trabalhados: STATE.config.diasTrabalhados,
