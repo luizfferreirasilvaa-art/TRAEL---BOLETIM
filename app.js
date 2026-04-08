@@ -403,9 +403,6 @@ function renderDashboardForca() {
   const cfg = STATE.config;
 
   setText('metaForcaValue', cfg.metaTotal);
-  setText('kpiForcaMeta', cfg.metaTotal);
-  setText('kpiForcaReal', m.totals.Total);
-  setText('kpiForcaSaldo', Math.max(0, cfg.metaTotal - m.totals.Total));
   setText('forcaPct', Math.round(m.pct) + '%');
 
   renderForcaCharts(m);

@@ -369,6 +369,7 @@ body {
 .core-emp { border-left: 4px solid #2E7D32; }
 .core-total { border-left: 4px solid var(--warning); }
 .core-reject { border-left: 4px solid #D32F2F; }
+.core-meta { border-left: 4px solid var(--accent); }
 
 .kpi-value-alert { color: #FFA726; }
 .kpi-value-critical { color: #D32F2F; }
@@ -428,8 +429,8 @@ body {
 
 .lines-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 20px;
 }
 
 .line-card {
@@ -652,6 +653,17 @@ body {
   justify-content: space-between;
   margin-bottom: 14px;
 }
+
+.kpi-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  padding: 0 28px 24px;
+}
+
+.kpi-body:empty { display: none; }
+
+.meta-card { border-left: 4px solid var(--primary); }
 
 .obs-item {
   display: flex;
