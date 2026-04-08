@@ -974,97 +974,159 @@ async function handleFileUpload(event, area) {
 }
 
 function parseXLSXRows(rows, area) {
-  // Verificamos se é uma planilha consolidada de Distribuição pesquisando por cabeçalhos típicos
-  const firstRow = rows[0] || {};
-  const isConsolidated = Object.keys(firstRow).some(k => 
-    k.includes('Realizado Enrolado') || k.includes('Realizado Convencional') || k.includes('Realizado JC')
+  if (!rows || rows.length === 0) return [];
+  
+  const firstRow = rows[0];
+  // Chaves limpas (sem espaços extras)
+  const colNames = Object.keys(firstRow).map(k => String(k).trim());
+  
+  // LOG DE DEBUG PARA O USUÁRIO (Facilita muito descobrir o erro)
+  console.log("Colunas Detectadas:", colNames);
+
+  const cleanRows = rows.filter(row => {
+    const firstVal = String(Object.values(row)[0] || '').toUpperCase();
+    return firstVal && !firstVal.includes('SOMA') && !firstVal.includes('MÉDIA') && !firstVal.includes('TOTAL');
+  });
+
+  // Detecção se é o consolidado (Boletim de Medição)
+  const isConsolidated = area === 'distrib' && (
+    colNames.some(k => k.includes('Enrolado') || k.includes('JC') || k.includes('Convencional') || k.includes('Executado'))
   );
 
   if (isConsolidated) {
-    return rows.flatMap(row => {
-      const dateRaw = row['Data'] || row['DATA'] || row['Dia'] || row['DIA'];
-      const date = parseDateBR(dateRaw) || todayDateStr();
-      const records = [];
+    const currentYear = new Date().getFullYear();
+    const currentMonth = STATE.config.month || todayDateStr().substring(0, 7);
+    
+    const parsedData = cleanRows.flatMap((row, rowIndex) => {
+      // Normalizar chaves da linha atual
+      const cleanRow = {};
+      Object.keys(row).forEach(k => cleanRow[String(k).trim()] = row[k]);
 
-      // Mapeamento de blocos de colunas (Realizado e Meta)
+      // 1. Data
+      const dateKey = Object.keys(cleanRow).find(k => k.toLowerCase() === 'data' || k.toLowerCase() === 'dia' || k === 'A' || k === '__EMPTY' || k === 'Data');
+      let date = todayDateStr();
+      const valDateRaw = cleanRow[dateKey];
+      
+      if (valDateRaw) {
+        const strDate = String(valDateRaw);
+        if (!isNaN(valDateRaw) && parseInt(valDateRaw) < 32) {
+          date = `${currentMonth}-${String(valDateRaw).padStart(2, '0')}`;
+        } else if (strDate.includes('/')) {
+          const parts = strDate.split('/');
+          const d = parts[0].padStart(2, '0');
+          const m = parts[1].padStart(2, '0');
+          const y = parts[2] || currentYear;
+          date = `${y}-${m}-${d}`;
+        } else {
+          date = parseDateBR(valDateRaw) || date;
+        }
+      }
+
+      const records = [];
       const mappings = [
         { key: 'Enrolado', type: 'ENR' },
         { key: 'Convencional', type: 'EMP' },
-        { key: 'JC-TRI', type: 'JC-TRI' },
-        { key: 'Trifásico', type: 'JC-TRI' }, // Alias comum
-        { key: 'LAB', type: 'LAB' },
-        { key: 'Laboratório', type: 'LAB' }
+        { key: 'JC-TRIF', type: 'JC-TRI' },
+        { key: 'JC', type: 'JC-TRI' },
+        { key: 'REP - LAB', type: 'LAB' }
       ];
 
+      const processedTypes = new Set();
       mappings.forEach(m => {
-        // Busca flexível por colunas que contenham o termo (Ex: "Realizado Enrolado")
-        const colReal = Object.keys(row).find(k => k.includes('Realizado') && k.includes(m.key));
-        const colMeta = Object.keys(row).find(k => k.includes('Meta') && k.includes(m.key));
+        if (processedTypes.has(m.type)) return;
+
+        // Tenta achar por NOME
+        const colReal = Object.keys(cleanRow).find(k => {
+          const key = k.toLowerCase();
+          const target = m.key.toLowerCase();
+          return (key.includes('realizado') || key.includes('executado')) && key.includes(target) && !key.includes('acum');
+        });
         
-        const real = parseInt(row[colReal]) || 0;
-        const prog = parseInt(row[colMeta]) || 0;
+        const colMeta = Object.keys(cleanRow).find(k => {
+          const key = k.toLowerCase();
+          const target = m.key.toLowerCase();
+          return (key.includes('meta') || key.includes('prog')) && key.includes(target) && !key.includes('acum');
+        });
+
+        let real = parseInt(cleanRow[colReal]) || 0;
+        let prog = parseInt(cleanRow[colMeta]) || 0;
+
+        // Caso especial para REP - LAB
+        if (m.key === 'REP - LAB') real = parseInt(cleanRow['REP - LAB']) || 0;
 
         if (real > 0 || prog > 0) {
           records.push({
-            date,
-            line: m.type,
-            prog: prog,
-            real: real,
-            description: `Produção Consolidada: ${m.key}`,
-            area: 'distrib',
-            core_type: m.type,
-            origin: 'excel_consolidated'
+            date, line: m.type, prog, real, area: 'distrib',
+            description: `Boletim: ${m.key}`, core_type: m.type, origin: 'excel_consolidated'
           });
+          processedTypes.add(m.type);
         }
       });
 
       return records;
     });
+
+    if (parsedData.length === 0) {
+      console.warn("Nenhum dado mapeado. Colunas encontradas:", colNames);
+      alert("Atenção: A planilha foi reconhecida, mas os dados não puderam ser lidos. Certifique-se de que os cabeçalhos 'Executado' e 'Meta' estão na primeira linha.");
+    }
+    return parsedData;
   }
 
-  // Lógica padrão para Média Força ou Itens Individuais
-  return rows.map(row => {
-    // Detecção das colunas da planilha do usuário
-    const dateRaw = row['DATA LAB'] || row['Data'] || row['DATA'];
-    const desc    = row['DESCRIÇÃO'] || row['Descrição'] || row['OS'] || '';
-    const lineVal = row['Linha'] || row['LINHA'] || (area === 'distrib' ? 'TPD' : 'TPM');
-    const qteVal  = row['QTDE'] || row['Qtde'] || row['Realizado'] || row['Real'] || row['Prog'] || 0;
+  // Lógica padrão
+  return cleanRows.map(row => {
+    const cleanRow = {};
+    Object.keys(row).forEach(k => cleanRow[String(k).trim()] = row[k]);
 
-    // Se a planilha tiver 'DATA LAB' ou 'QTDE', assumimos que é a planilha MF e forçamos a área
-    const isSpecialSheet = !!(row['DATA LAB'] || row['QTDE']);
-    const finalArea = isSpecialSheet ? 'forca' : area;
+    const dateRaw = cleanRow['DATA LAB'] || cleanRow['Data'] || cleanRow['DATA'] || cleanRow['Dia'];
+    const desc    = cleanRow['DESCRIÇÃO'] || cleanRow['Descrição'] || cleanRow['OS'] || '';
+    const lineVal = cleanRow['Linha'] || cleanRow['LINHA'] || (area === 'distrib' ? 'TPD' : 'TPM');
+    const qteVal  = cleanRow['QTDE'] || cleanRow['Qtde'] || cleanRow['Realizado'] || cleanRow['Real'] || cleanRow['Executado'] || 0;
+
+    let date = parseDateBR(dateRaw) || todayDateStr();
+    if (dateRaw && !isNaN(dateRaw) && parseInt(dateRaw) < 32) {
+      date = `${STATE.config.month || todayDateStr().substring(0, 7)}-${String(dateRaw).padStart(2, '0')}`;
+    }
 
     return {
-      date: parseDateBR(dateRaw) || todayDateStr(),
-      line: lineVal,
-      prog: isSpecialSheet ? 0 : (parseInt(row['Programado'] || row['Prog']) || 0),
+      date, line: lineVal,
+      prog: parseInt(cleanRow['Programado'] || cleanRow['Prog'] || cleanRow['Meta']) || 0,
       real: parseInt(qteVal) || 0,
       description: desc,
-      area: finalArea,
-      core_type: finalArea === 'distrib' ? detectCoreType(desc) : null,
+      area: !!(cleanRow['DATA LAB'] || cleanRow['QTDE']) ? 'forca' : area,
+      core_type: area === 'distrib' ? detectCoreType(desc) : null,
       origin: 'excel'
     };
   }).filter(r => r.real > 0 || r.prog > 0);
 }
 
+
+
 function parseDateBR(val) {
   if (!val) return null;
-  const str = String(val).toLowerCase().trim();
+  const s = String(val).trim();
   
-  // Caso 1: YYYY-MM-DD
-  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  // Caso 1: Data completa YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
 
-  // Caso 2: DD/abr
-  const parts = str.split('/');
-  if (parts.length === 2) {
+  // Caso 2: Formato D/M ou D/M/Y (Ex: 2/2)
+  if (s.includes('/')) {
+    const parts = s.split('/');
+    if (parts.length >= 2) {
+      const d = parts[0].padStart(2, '0');
+      const m = parts[1].padStart(2, '0');
+      const y = parts[2] || new Date().getFullYear();
+      return `${y}-${m}-${d}`;
+    }
+  }
+
+  // Caso 3: Formato DD-MMM (Ex: 01-abr)
+  if (s.includes('-')) {
+    const parts = s.split('-');
     const day = parts[0].padStart(2, '0');
-    const monthMap = {
-      jan: '01', fev: '02', mar: '03', abr: '04', mai: '05', jun: '06',
-      jul: '07', ago: '08', set: '09', out: '10', nov: '11', dez: '12'
-    };
-    const mmm = parts[1].substring(0, 3);
-    const month = monthMap[mmm];
-    if (month) return `2026-${month}-${day}`;
+    const monthMap = { 'jan': '01', 'fev': '02', 'mar': '03', 'abr': '04', 'mai': '05', 'jun': '06', 'jul': '07', 'ago': '08', 'set': '09', 'out': '10', 'nov': '11', 'dez': '12' };
+    const month = monthMap[parts[1].toLowerCase().substring(0, 3)] || '01';
+    return `${new Date().getFullYear()}-${month}-${day}`;
   }
 
   return null;
@@ -1192,20 +1254,27 @@ function initTheme() {
 
 document.addEventListener('DOMContentLoaded', async () => {
   initTheme();
-  // Update UI immediately (cached values)
-  loadFromStorage();
-  updateClock();
-  setInterval(updateClock, 1000);
-
-  // Sync with Supabase
-  await loadDataFromDB();
-
+  
+  // 1. GARANTIR MÊS NO INÍCIO (Evita RangeError/NaN)
   if (!STATE.config.month) {
     const now = new Date();
     STATE.config.month = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   }
 
-  // Set default view
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // 2. Carregar do armazenamento local como fallback imediato
+  loadFromStorage();
+  
+  // 3. Sync definitivo com Supabase
+  try {
+    await loadDataFromDB();
+  } catch (e) {
+    console.warn('Falha no sync inicial do DB:', e);
+  }
+
+  // 4. Set views
   showPage('distribuicao');
   initDropZones();
 });
