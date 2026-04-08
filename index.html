@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Boletim Diário de Medição | Trael Transformadores</title>
+  <meta name="description" content="Painel de controle de produção diária - Programado x Realizado - Trael Transformadores Elétricos LTDA" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ==================== SIDEBAR NAV ==================== -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+  <img src="logo.png" alt="TRAEL" class="sidebar-logo-img" />
+</div>
+  <nav class="sidebar-nav">
+    <a href="#dashboard" class="nav-item active" data-page="dashboard" onclick="showPage('dashboard')">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">Dashboard</span>
+    </a>
+    <a href="#upload" class="nav-item" data-page="upload" onclick="showPage('upload')">
+      <span class="nav-icon">📤</span>
+      <span class="nav-label">Upload / Entrada</span>
+    </a>
+    <a href="#settings" class="nav-item" data-page="settings" onclick="showPage('settings')">
+      <span class="nav-icon">⚙️</span>
+      <span class="nav-label">Configurações</span>
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="sidebar-version">v2.1.0</div>
+  </div>
+</aside>
+
+<!-- ==================== MAIN CONTENT ==================== -->
+<main class="main-content">
+
+  <!-- ========== PAGE: DASHBOARD ========== -->
+  <div id="page-dashboard" class="page active">
+
+    <!-- HEADER -->
+    <header class="dashboard-header">
+      <div class="header-left">
+        <div class="company-badge">
+          <img src="logo.png" alt="TRAEL Transformadores Elétricos" class="header-logo-img" />
+        </div>
+        <div class="header-divider"></div>
+        <div class="header-title-block">
+          <h2 class="bulletin-title">BOLETIM DIÁRIO DE MEDIÇÃO</h2>
+          <p class="bulletin-subtitle">PROGRAMADO × REALIZADO</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="date-block">
+          <div class="date-today">
+            <span class="date-label">HOJE</span>
+            <span class="date-value" id="headerDate">—</span>
+          </div>
+          <div class="date-month">
+            <span class="date-label">MÊS</span>
+            <span class="date-value" id="headerMonth">—</span>
+          </div>
+        </div>
+        <div class="meta-badge">
+          <div class="meta-badge-label">META MENSAL DEFINIDA</div>
+          <div class="meta-badge-month" id="metaBadgeMonth">—</div>
+          <div class="meta-badge-value" id="metaBadgeValue">—</div>
+          <button class="meta-edit-btn" onclick="showPage('settings')" title="Editar configurações">✏️</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ---- KPI CARDS ROW ---- -->
+    <section class="kpi-section">
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon-meta">🎯</div>
+        <div class="kpi-body">
+          <div class="kpi-label">Meta Mensal</div>
+          <div class="kpi-value" id="kpiMeta">—</div>
+          <div class="kpi-sub">unidades / mês</div>
+        </div>
+        <div class="kpi-tag kpi-tag-blue">ALVO</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon-prog">📅</div>
+        <div class="kpi-body">
+          <div class="kpi-label">Prog. Acumulado Mês</div>
+          <div class="kpi-value" id="kpiProg">—</div>
+          <div class="kpi-sub">unidades planejadas</div>
+        </div>
+        <div class="kpi-tag kpi-tag-gray">PLANEJADO</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon-real">✅</div>
+        <div class="kpi-body">
+          <div class="kpi-label">Realizado Acumulado</div>
+          <div class="kpi-value kpi-value-green" id="kpiReal">—</div>
+          <div class="kpi-sub">unidades produzidas</div>
+        </div>
+        <div class="kpi-tag kpi-tag-green">REALIZADO</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon-saldo">⚖️</div>
+        <div class="kpi-body">
+          <div class="kpi-label">Saldo do Mês</div>
+          <div class="kpi-value kpi-value-alert" id="kpiSaldo">—</div>
+          <div class="kpi-sub">unidades restantes</div>
+        </div>
+        <div class="kpi-tag kpi-tag-yellow" id="saldoTag">SALDO</div>
+      </div>
+
+      <!-- GAUGE CARD -->
+      <div class="kpi-card kpi-card-gauge">
+        <div class="kpi-label" style="margin-bottom:8px">% Realizado Mês</div>
+        <div class="gauge-container">
+          <svg class="gauge-svg" viewBox="0 0 120 70" width="160" height="95">
+            <path d="M10,65 A50,50,0,0,1,110,65" fill="none" stroke="#1a1a2e" stroke-width="10" stroke-linecap="round"/>
+            <path id="gaugePath" d="M10,65 A50,50,0,0,1,110,65" fill="none" stroke="url(#gaugeGrad)" stroke-width="10" stroke-linecap="round" stroke-dasharray="157" stroke-dashoffset="157"/>
+            <defs>
+              <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#1B5E20"/>
+                <stop offset="100%" style="stop-color:#66BB6A"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="gauge-center">
+            <span class="gauge-pct" id="gaugePct">0%</span>
+            <span class="gauge-label-small">do mês</span>
+          </div>
+        </div>
+        <div class="gauge-status" id="gaugeStatus">—</div>
+      </div>
+    </section>
+
+    <!-- ---- SEGMENTAÇÃO POR LINHA ---- -->
+    <section class="lines-section">
+      <div class="section-header">
+        <h3 class="section-title">📋 STATUS POR LINHA DE PRODUÇÃO</h3>
+        <span class="section-hint">Atualizado em tempo real</span>
+      </div>
+      <div class="lines-grid">
+        <!-- TPM -->
+        <div class="line-card">
+          <div class="line-header">
+            <div class="line-badge line-badge-tpm">TPM</div>
+            <span class="line-name">Média Força</span>
+            <span class="line-status-icon" id="tpmStatus">⚠️</span>
+          </div>
+          <div class="line-kpis">
+            <div class="line-kpi"><span class="lk-label">Prog.</span><span class="lk-val" id="tpmProg">—</span></div>
+            <div class="line-kpi"><span class="lk-label">Real.</span><span class="lk-val lk-green" id="tpmReal">—</span></div>
+            <div class="line-kpi"><span class="lk-label">Var.</span><span class="lk-val" id="tpmVar">—</span></div>
+          </div>
+          <div class="line-bar-bg">
+            <div class="line-bar-fill" id="tpmBar" style="width:0%"></div>
+          </div>
+          <div class="line-pct" id="tpmPct">0%</div>
+        </div>
+        <!-- TPD -->
+        <div class="line-card">
+          <div class="line-header">
+            <div class="line-badge line-badge-tpd">TPD</div>
+            <span class="line-name">Distribuição</span>
+            <span class="line-status-icon" id="tpdStatus">⚠️</span>
+          </div>
+          <div class="line-kpis">
+            <div class="line-kpi"><span class="lk-label">Prog.</span><span class="lk-val" id="tpdProg">—</span></div>
+            <div class="line-kpi"><span class="lk-label">Real.</span><span class="lk-val lk-green" id="tpdReal">—</span></div>
+            <div class="line-kpi"><span class="lk-label">Var.</span><span class="lk-val" id="tpdVar">—</span></div>
+          </div>
+          <div class="line-bar-bg">
+            <div class="line-bar-fill" id="tpdBar" style="width:0%"></div>
+          </div>
+          <div class="line-pct" id="tpdPct">0%</div>
+        </div>
+        <!-- TPS -->
+        <div class="line-card">
+          <div class="line-header">
+            <div class="line-badge line-badge-tps">TPS</div>
+            <span class="line-name">Seco</span>
+            <span class="line-status-icon" id="tpsStatus">⚠️</span>
+          </div>
+          <div class="line-kpis">
+            <div class="line-kpi"><span class="lk-label">Prog.</span><span class="lk-val" id="tpsProg">—</span></div>
+            <div class="line-kpi"><span class="lk-label">Real.</span><span class="lk-val lk-green" id="tpsReal">—</span></div>
+            <div class="line-kpi"><span class="lk-label">Var.</span><span class="lk-val" id="tpsVar">—</span></div>
+          </div>
+          <div class="line-bar-bg">
+            <div class="line-bar-fill" id="tpsBar" style="width:0%"></div>
+          </div>
+          <div class="line-pct" id="tpsPct">0%</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---- CHART SECTION ---- -->
+    <section class="chart-section">
+      <div class="section-header">
+        <h3 class="section-title">📈 ACOMPANHAMENTO DIÁRIO E ACUMULADO DO MÊS</h3>
+        <div class="chart-legend">
+          <span class="legend-dot" style="background:#2E7D32"></span><span>Realizado</span>
+          <span class="legend-dot" style="background:#90A4AE"></span><span>Programado</span>
+          <span class="legend-line"></span><span>Acumulado</span>
+        </div>
+      </div>
+      <div class="chart-wrapper">
+        <canvas id="mainChart"></canvas>
+        <!-- TODAY BULLETIN -->
+        <div class="today-bulletin" id="todayBulletin">
+          <div class="tb-title">📋 BOLETIM DE HOJE</div>
+          <div class="tb-date" id="tbDate">—</div>
+          <div class="tb-row"><span class="tb-label">Prog:</span><span class="tb-val" id="tbProg">—</span></div>
+          <div class="tb-row"><span class="tb-label">Real:</span><span class="tb-val tb-green" id="tbReal">—</span></div>
+          <div class="tb-row"><span class="tb-label">Var:</span><span class="tb-val" id="tbVar">—</span></div>
+          <div class="tb-divider"></div>
+          <div class="tb-row"><span class="tb-label">Acum.:</span><span class="tb-val tb-green" id="tbAcum">—</span></div>
+          <div class="tb-row"><span class="tb-label">Tend.:</span><span class="tb-val" id="tbTend">—</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---- ANALYSIS + EQUIPMENT ---- -->
+    <section class="analysis-section">
+      <div class="analysis-card">
+        <div class="analysis-header">
+          <h3 class="section-title">🧠 ANÁLISE E OBSERVAÇÕES DOS LÍDERES</h3>
+          <button class="btn-edit-obs" onclick="toggleEditObs()">✏️ Editar</button>
+        </div>
+        <div id="obsDisplay">
+          <div class="obs-item obs-success">
+            <span class="obs-icon">✅</span>
+            <p id="obs1Text">Produção do dia superou a meta diária em +2 unidades, impulsionada por um lote urgente de transformadores TPM. Equipe manteve ritmo acima da média.</p>
+          </div>
+          <div class="obs-item obs-warning">
+            <span class="obs-icon">⚠️</span>
+            <p id="obs2Text">Próximo turno com foco reforçado na linha TPD para recuperar desvio acumulado de -5 unidades. Verificar disponibilidade do material de isolamento tipo A.</p>
+          </div>
+          <div class="obs-item obs-info">
+            <span class="obs-icon">📌</span>
+            <p id="obs3Text">Tendência de fechamento do mês projetada em 229 unidades (95,4% da meta). Necessário acelerar ritmo nos próximos 10 dias úteis.</p>
+          </div>
+        </div>
+        <div id="obsEdit" style="display:none">
+          <textarea class="obs-textarea" id="obs1Input" placeholder="Observação 1 (Sucesso/Info)..."></textarea>
+          <textarea class="obs-textarea" id="obs2Input" placeholder="Observação 2 (Alerta...)"></textarea>
+          <textarea class="obs-textarea" id="obs3Input" placeholder="Observação 3 (Projeção/Foco)..."></textarea>
+          <button class="btn-save-obs" onclick="saveObs()">💾 Salvar Observações</button>
+        </div>
+      </div>
+
+      <div class="equipment-card">
+        <h3 class="section-title">🏭 STATUS DA LINHA E EQUIPAMENTOS</h3>
+        <div class="equipment-list" id="equipmentList">
+          <!-- populated by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="dashboard-footer">
+      <span>© 2026 TRAEL Transformadores Elétricos LTDA. — Sistema de Controle de Produção</span>
+      <span id="footerTime">—</span>
+    </footer>
+  </div>
+
+  <!-- ========== PAGE: UPLOAD ========== -->
+  <div id="page-upload" class="page">
+    <div class="page-inner">
+      <div class="page-title-row">
+        <h2 class="page-main-title">📤 UPLOAD E ENTRADA DE DADOS</h2>
+        <p class="page-desc">Importe um arquivo Excel com os registros do laboratório ou insira os dados manualmente.</p>
+      </div>
+
+      <!-- UPLOAD AREA -->
+      <div class="upload-card">
+        <h3 class="upload-section-title">📁 Importar Planilha Excel</h3>
+        <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+          <div class="drop-icon">📂</div>
+          <p class="drop-text">Clique ou arraste o arquivo Excel aqui</p>
+          <p class="drop-hint">Formatos aceitos: .xlsx, .xls, .csv</p>
+          <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFileUpload(event)" />
+        </div>
+        <div id="uploadStatus" class="upload-status" style="display:none"></div>
+        <div id="uploadPreview" class="upload-preview" style="display:none"></div>
+      </div>
+
+      <!-- MANUAL ENTRY -->
+      <div class="upload-card">
+        <h3 class="upload-section-title">✏️ Entrada Manual de Registros</h3>
+        <p class="upload-hint-text">Use esta área para adicionar registros que não constam na planilha. Você pode adicionar múltiplos registros de uma vez.</p>
+        
+        <div class="manual-form" id="manualForm">
+          <div class="manual-entry-row" id="manualEntries">
+            <div class="manual-entry" data-entry="0">
+              <div class="entry-header">
+                <span class="entry-num">Registro #1</span>
+                <button class="btn-remove-entry" onclick="removeManualEntry(0)" style="display:none">✕</button>
+              </div>
+              <div class="entry-fields">
+                <div class="form-group">
+                  <label>Data</label>
+                  <input type="date" class="form-input entry-date" id="entryDate0" />
+                </div>
+                <div class="form-group">
+                  <label>Linha</label>
+                  <select class="form-input entry-line" id="entryLine0">
+                    <option value="">Selecionar...</option>
+                    <option value="TPM">TPM – Média Força</option>
+                    <option value="TPD">TPD – Distribuição</option>
+                    <option value="TPS">TPS – Seco</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Programado</label>
+                  <input type="number" class="form-input entry-prog" id="entryProg0" min="0" placeholder="0" />
+                </div>
+                <div class="form-group">
+                  <label>Realizado</label>
+                  <input type="number" class="form-input entry-real" id="entryReal0" min="0" placeholder="0" />
+                </div>
+                <div class="form-group">
+                  <label>Descrição / OS</label>
+                  <input type="text" class="form-input entry-desc" id="entryDesc0" placeholder="Nº da OS ou descrição..." />
+                </div>
+              </div>
+            </div>
+          </div>
+          <button class="btn-add-entry" onclick="addManualEntry()">+ Adicionar Outro Registro</button>
+        </div>
+
+        <div class="manual-actions">
+          <button class="btn-save-manual" onclick="saveManualEntries()">💾 Salvar Registros</button>
+          <button class="btn-clear-manual" onclick="clearManualForm()">🗑️ Limpar</button>
+        </div>
+        <div id="manualStatus" style="display:none" class="upload-status"></div>
+      </div>
+
+      <!-- DATA TABLE -->
+      <div class="upload-card">
+        <div class="table-header-row">
+          <h3 class="upload-section-title">📋 Registros do Mês Atual</h3>
+          <div class="table-actions">
+            <select id="filterLine" class="form-input" style="width:160px" onchange="filterTable()">
+              <option value="">Todas as Linhas</option>
+              <option value="TPM">TPM</option>
+              <option value="TPD">TPD</option>
+              <option value="TPS">TPS</option>
+            </select>
+            <button class="btn-export" onclick="exportData()">📥 Exportar CSV</button>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table" id="dataTable">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Linha</th>
+                <th>Programado</th>
+                <th>Realizado</th>
+                <th>Variação</th>
+                <th>Descrição</th>
+                <th>Origem</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="dataTableBody">
+              <tr><td colspan="8" class="table-empty">Nenhum registro encontrado para o mês atual.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== PAGE: SETTINGS ========== -->
+  <div id="page-settings" class="page">
+    <div class="page-inner">
+      <div class="page-title-row">
+        <h2 class="page-main-title">⚙️ CONFIGURAÇÕES DO SISTEMA</h2>
+        <p class="page-desc">Defina as metas mensais, dias úteis e parâmetros de controle de produção.</p>
+      </div>
+
+      <div class="settings-grid">
+        <!-- META MENSAL -->
+        <div class="settings-card">
+          <h3 class="settings-card-title">🎯 Metas Mensais</h3>
+          <p class="settings-card-desc">Configure a meta total e por linha de produção para o mês atual.</p>
+          <div class="settings-form">
+            <div class="form-group">
+              <label class="form-label">Mês de Referência</label>
+              <input type="month" class="form-input" id="configMonth" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Meta Total do Mês (unidades)</label>
+              <input type="number" class="form-input" id="configMetaTotal" min="0" placeholder="Ex: 240" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Meta TPM – Média Força</label>
+              <input type="number" class="form-input" id="configMetaTPM" min="0" placeholder="Ex: 80" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Meta TPD – Distribuição</label>
+              <input type="number" class="form-input" id="configMetaTPD" min="0" placeholder="Ex: 100" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Meta TPS – Seco</label>
+              <input type="number" class="form-input" id="configMetaTPS" min="0" placeholder="Ex: 60" />
+            </div>
+          </div>
+        </div>
+
+        <!-- DIAS ÚTEIS -->
+        <div class="settings-card">
+          <h3 class="settings-card-title">📅 Calendário de Produção</h3>
+          <p class="settings-card-desc">Configure os dias úteis e o estado atual do mês.</p>
+          <div class="settings-form">
+            <div class="form-group">
+              <label class="form-label">Dias Úteis no Mês</label>
+              <input type="number" class="form-input" id="configDiasUteis" min="1" max="31" placeholder="Ex: 20" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Dias Trabalhados até Hoje</label>
+              <input type="number" class="form-input" id="configDiasTrabalhados" min="0" placeholder="Ex: 10" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Prog. Acumulado do Mês (total)</label>
+              <input type="number" class="form-input" id="configProgAcum" min="0" placeholder="Ex: 120" />
+            </div>
+          </div>
+        </div>
+
+        <!-- EQUIPAMENTOS -->
+        <div class="settings-card settings-card-full">
+          <h3 class="settings-card-title">🏭 Status dos Equipamentos</h3>
+          <p class="settings-card-desc">Atualize o status de cada equipamento da linha de produção.</p>
+          <div id="equipmentSettings">
+            <!-- populated by JS -->
+          </div>
+          <button class="btn-add-equip" onclick="addEquipment()">+ Adicionar Equipamento</button>
+        </div>
+      </div>
+
+      <div class="settings-actions">
+        <button class="btn-save-settings" onclick="saveSettings()">💾 Salvar Configurações</button>
+        <button class="btn-reset-settings" onclick="resetSettings()">↺ Restaurar Padrão</button>
+      </div>
+      <div id="settingsStatus" class="upload-status" style="display:none"></div>
+    </div>
+  </div>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
