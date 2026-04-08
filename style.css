@@ -360,6 +360,18 @@ body {
 .kpi-tag-gray   { background: rgba(144,164,174,0.15); color: #90A4AE; }
 .kpi-tag-green  { background: rgba(76,175,80,0.2);   color: var(--green-400); }
 .kpi-tag-yellow { background: rgba(255,167,38,0.15); color: #FFA726; }
+.kpi-tag-red    { background: rgba(211,47,47,0.15);  color: #D32F2F; }
+.kpi-tag-dark   { background: rgba(46,125,50,0.25);  color: #81C784; }
+
+/* VARIATIONS FOR CORE TYPES */
+.core-enr { border-left: 4px solid #9CCC65; }
+.core-jc  { border-left: 4px solid #26C6DA; }
+.core-emp { border-left: 4px solid #2E7D32; }
+.core-total { border-left: 4px solid var(--warning); }
+.core-reject { border-left: 4px solid #D32F2F; }
+
+.kpi-value-alert { color: #FFA726; }
+.kpi-value-critical { color: #D32F2F; }
 
 /* GAUGE */
 .gauge-container {
@@ -540,6 +552,49 @@ body {
   width: 100% !important;
   height: 100% !important;
 }
+
+/* BI CONTAINER (Chart + Table) */
+.bi-container {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.bi-chart-main, .bi-chart-pct {
+  padding: 20px 20px 0;
+}
+.bi-table-wrapper {
+  overflow-x: auto;
+  border-top: 1px solid var(--border);
+  background: rgba(0,0,0,0.2);
+}
+
+.bi-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.bi-table th, .bi-table td {
+  border: 1px solid rgba(255,255,255,0.05);
+  padding: 6px 4px;
+  text-align: center;
+  min-width: 45px;
+}
+.bi-table th {
+  background: rgba(255,255,255,0.03);
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  font-size: 9px;
+}
+.bi-table tr:hover td { background: rgba(255,255,255,0.02); }
+.bi-table .bi-val-green { color: var(--green-400); font-weight: 700; }
+.bi-table .bi-val-red { color: var(--danger); font-weight: 700; }
+.bi-table .bi-col-fixed { position: sticky; left: 0; background: var(--bg-card); z-index: 2; text-align: left; padding-left: 10px; min-width: 120px; }
+.bi-table .bi-avg-col { background: rgba(255,167,38,0.05); color: var(--warning); font-weight: bold; }
 
 .today-bulletin {
   width: 180px;
@@ -1063,4 +1118,178 @@ body {
   .chart-wrapper { flex-direction: column; }
   .today-bulletin { width: 100%; }
   .dashboard-header { flex-direction: column; align-items: flex-start; }
+}
+/* ================================================
+   REPORT SECTION (RULE 4)
+   ================================================ */
+.report-section {
+  padding: 0 28px 20px;
+}
+.report-card {
+  background: linear-gradient(135deg, var(--bg-card) 0%, #151a25 100%);
+  border: 1px solid rgba(76,175,80,0.25);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+.report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 15px;
+}
+.report-header h3 {
+  font-family: 'Rajdhani', sans-serif;
+  color: var(--green-400);
+  font-size: 18px;
+  letter-spacing: 1px;
+}
+.report-body {
+  font-size: 14px;
+  line-height: 1.6;
+}
+.report-exec-summary {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 20px;
+  padding-left: 14px;
+  border-left: 4px solid var(--green-500);
+}
+.report-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  margin-top: 25px;
+}
+.report-bullets {
+  list-style: none;
+}
+.report-bullets li {
+  margin-bottom: 10px;
+  padding-left: 20px;
+  position: relative;
+}
+.report-bullets li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: var(--green-400);
+  font-weight: bold;
+}
+.report-table-mini {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin: 15px 0;
+}
+.report-table-mini th, .report-table-mini td {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  text-align: center;
+}
+.report-table-mini th { background: rgba(255,255,255,0.03); color: var(--text-secondary); }
+
+/* ================================================
+   UPLOAD TABS
+   ================================================ */
+.upload-tabs {
+  display: flex;
+  gap: 1px;
+  background: var(--border);
+  border-radius: 10px 10px 0 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.upload-tab-btn {
+  flex: 1;
+  padding: 14px;
+  background: var(--bg-dark);
+  border: none;
+  color: var(--text-secondary);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--duration);
+}
+.upload-tab-btn.active {
+  background: var(--bg-card);
+  color: var(--green-400);
+  box-shadow: inset 0 -3px 0 var(--green-500);
+}
+.upload-tab-btn:hover:not(.active) {
+  background: rgba(255,255,255,0.03);
+}
+
+.upload-tab-content {
+  display: none;
+  flex-direction: column;
+  gap: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+.upload-tab-content.active { display: flex; }
+
+/* RECENT TABLE WRAPPER */
+.table-container {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(0,0,0,0.1);
+}
+
+.btn-export-report, .btn-export {
+  background: rgba(66,165,245,0.1);
+  border: 1px solid rgba(66,165,245,0.3);
+  color: #42A5F5;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all var(--duration);
+}
+.btn-export-report:hover, .btn-export:hover {
+  background: rgba(66,165,245,0.2);
+}
+
+.manual-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 15px;
+}
+.btn-add-entry {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.btn-save-entries {
+  background: var(--green-900);
+  border: 1px solid var(--green-500);
+  color: white;
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+@media (max-width: 1200px) {
+  .kpi-section { grid-template-columns: repeat(3, 1fr); }
+  .report-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+  .kpi-section { grid-template-columns: 1fr 1fr; }
+  .entry-fields { grid-template-columns: 1fr; }
 }

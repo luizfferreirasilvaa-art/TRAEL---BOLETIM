@@ -10,7 +10,6 @@ const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ====================== STATE ======================
 const STATE = {
-  // Config / Settings
   config: {
     month: '',            // YYYY-MM
     metaTotal: 240,
@@ -21,23 +20,17 @@ const STATE = {
     diasTrabalhados: 10,
     progAcum: 120,
   },
-  // Records: array of { id, date, line, prog, real, desc, source }
-  records: [],
-  // Equipment: array of { id, name, status }   status: 'green'|'yellow'|'red'
-  equipment: [
-    { id: 1, name: 'Bobinadeira Principal', status: 'green' },
-    { id: 2, name: 'Forno de Secagem',      status: 'yellow' },
-    { id: 3, name: 'Ponte Rolante 1',       status: 'green' },
-    { id: 4, name: 'Estação de Teste',      status: 'red' },
-  ],
-  // Obs texts
-  obs: [
-    'Produção do dia superou a meta diária em +2 unidades, impulsionada por um lote urgente de transformadores TPM. Equipe manteve ritmo acima da média.',
-    'Próximo turno com foco reforçado na linha TPD para recuperar desvio acumulado de -5 unidades. Verificar disponibilidade do material de isolamento tipo A.',
-    'Tendência de fechamento do mês projetada em 229 unidades (95,4% da meta). Necessário acelerar ritmo nos próximos 10 dias úteis.',
-  ],
-  manualEntryCount: 1,
-  chart: null,
+  records: [],  // Each: { id, date, line, prog, real, desc, area, coreType, source }
+  equipment: [],
+  obs: [],
+  charts: {
+    distribQty: null,
+    distribPct: null,
+    forcaTPM: null,
+    forcaTPS: null,
+    gaugeForca: null
+  },
+  currentUploadArea: 'distrib'
 };
 
 // ====================== SEED SAMPLE DATA ======================
@@ -177,12 +170,28 @@ function showPage(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
 
-  document.getElementById(`page-${page}`).classList.add('active');
-  document.querySelector(`[data-page="${page}"]`).classList.add('active');
+  const targetPage = document.getElementById(`page-${page}`);
+  const navBtn = document.querySelector(`[data-page="${page}"]`);
+  
+  if (targetPage) targetPage.classList.add('active');
+  if (navBtn) navBtn.classList.add('active');
 
-  if (page === 'dashboard') renderDashboard();
-  if (page === 'settings')  renderSettingsPage();
-  if (page === 'upload')    renderDataTable();
+  if (page === 'distribuicao') renderDashboardDistrib();
+  if (page === 'forca-seco')   renderDashboardForca();
+  if (page === 'settings')     renderSettingsPage();
+  if (page === 'upload')       { renderDataTable(); initializeManualEntries(); }
+}
+
+function switchUploadTab(area) {
+  STATE.currentUploadArea = area;
+  document.querySelectorAll('.upload-tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.upload-tab-content').forEach(c => c.classList.remove('active'));
+  
+  const targetId = area === 'distrib' ? 'tabBtnDistrib' : 'tabBtnForca';
+  const contentId = area === 'distrib' ? 'uploadTabDistrib' : 'uploadTabForca';
+  
+  document.getElementById(targetId).classList.add('active');
+  document.getElementById(contentId).classList.add('active');
 }
 
 // ====================== DATE HELPERS ======================
@@ -213,134 +222,252 @@ function updateClock() {
   const dateStr = `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()}`;
   const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 
-  const hd = document.getElementById('headerDate');
-  const hm = document.getElementById('headerMonth');
-  const ft = document.getElementById('footerTime');
-  if (hd) hd.textContent = dateStr;
-  if (hm) hm.textContent = getMonthLabel(STATE.config.month) || `${pad(now.getMonth()+1)}/${now.getFullYear()}`;
-  if (ft) ft.textContent = `Última atualização: ${dateStr} ${timeStr}`;
+  setText('distribDate', dateStr);
+  setText('forcaDate', dateStr);
+  
+  const mLabel = getMonthLabel(STATE.config.month) || `${pad(now.getMonth()+1)}/${now.getFullYear()}`;
+  setText('distribMonth', mLabel);
+  setText('forcaMonth', mLabel);
+  
+  setText('footerTimeDistrib', `Última atualização: ${dateStr} ${timeStr}`);
+  setText('footerTimeForca', `Última atualização: ${dateStr} ${timeStr}`);
 }
 
-// ====================== COMPUTED METRICS ======================
-function computeMetrics() {
+// ====================== CORE TYPE DETECTION ======================
+function detectCoreType(desc) {
+  if (!desc) return 'EMP';
+  const d = desc.toUpperCase();
+  if (d.includes('ENR') || d.includes('ENROLADINHO')) return 'ENR';
+  if (d.includes('JC') || d.includes('JEANCOR') || d.includes('TRI')) return 'JC';
+  if (d.includes('LAB') || d.includes('REPROV')) return 'LAB';
+  return 'EMP'; // Padrão convencional
+}
+
+// ====================== COMPUTED METRICS: DISTRIBUIÇÃO (BI) ======================
+function computeDistribMetrics() {
   const cfg = STATE.config;
-  const today = todayDateStr();
-  const currentMonthPrefix = cfg.month; // YYYY-MM
+  const currentMonthPrefix = cfg.month;
+  const monthRecords = STATE.records.filter(r => r.date && r.date.startsWith(currentMonthPrefix) && r.area === 'distrib');
 
-  // filter records for current month
-  const monthRecords = STATE.records.filter(r => r.date && r.date.startsWith(currentMonthPrefix));
-
-  // total real acumulado
-  const totalReal = monthRecords.reduce((s, r) => s + (Number(r.real) || 0), 0);
-
-  // by line
-  const byLine = { TPM: { prog: 0, real: 0 }, TPD: { prog: 0, real: 0 }, TPS: { prog: 0, real: 0 } };
-  monthRecords.forEach(r => {
-    if (byLine[r.line]) {
-      byLine[r.line].prog += Number(r.prog) || 0;
-      byLine[r.line].real += Number(r.real) || 0;
-    }
-  });
-
-  // today's records
-  const todayRecords = monthRecords.filter(r => r.date === today);
-  const todayProg = todayRecords.reduce((s, r) => s + (Number(r.prog) || 0), 0);
-  const todayReal = todayRecords.reduce((s, r) => s + (Number(r.real) || 0), 0);
-
-  // day-by-day for chart
   const daysInMonth = new Date(
     parseInt(currentMonthPrefix.split('-')[0]),
     parseInt(currentMonthPrefix.split('-')[1]),
     0
   ).getDate();
 
-  const dailyData = [];
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dateKey = `${currentMonthPrefix}-${String(d).padStart(2, '0')}`;
-    const dayRecs = monthRecords.filter(r => r.date === dateKey);
-    dailyData.push({
-      day: d,
-      prog: dayRecs.reduce((s, r) => s + (Number(r.prog) || 0), 0),
-      real: dayRecs.reduce((s, r) => s + (Number(r.real) || 0), 0),
-    });
-  }
+  const dailyByCore = {}; // { core: [val, val, val...] }
+  const cores = ['ENR', 'JC', 'EMP', 'LAB'];
+  cores.forEach(c => dailyByCore[c] = new Array(daysInMonth).fill(0));
 
-  // acumulado linha
-  let acum = 0;
-  const acumData = dailyData.map(d => { acum += d.real; return acum; });
+  monthRecords.forEach(r => {
+    const day = parseInt(r.date.split('-')[2]);
+    const type = r.coreType || detectCoreType(r.desc);
+    if (dailyByCore[type]) dailyByCore[type][day - 1] += (Number(r.real) || 0);
+  });
 
-  // tendência
-  const pct = cfg.metaTotal > 0 ? (totalReal / cfg.metaTotal) * 100 : 0;
-  const diasT = cfg.diasTrabalhados || 1;
-  const diasU = cfg.diasUteis || 1;
-  const ritmoMedio = totalReal / diasT;
-  const tendencia = Math.round(ritmoMedio * diasU);
-
-  return {
-    metaTotal: cfg.metaTotal,
-    progAcum:  cfg.progAcum,
-    realAcum:  totalReal,
-    saldo:     Math.max(cfg.metaTotal - totalReal, 0),
-    pct:       Math.min(pct, 100),
-    byLine,
-    todayProg, todayReal, todayVar: todayReal - todayProg,
-    dailyData, acumData,
-    daysInMonth,
-    tendencia,
+  // Médias Diárias (Total / Dias Trabalhados)
+  const dt = cfg.diasTrabalhados || 1;
+  const totals = {};
+  cores.forEach(c => totals[c] = dailyByCore[c].reduce((s,v) => s+v, 0));
+  
+  const medias = {
+    ENR: totals.ENR / dt,
+    JC:  totals.JC / dt,
+    EMP: totals.EMP / dt,
+    LAB: totals.LAB, // Total de reprovados no mês não é média
+    Total: (totals.ENR + totals.JC + totals.EMP) / dt
   };
+
+  // Tendência
+  const totalReal = totals.ENR + totals.JC + totals.EMP;
+  const tendencia = (totalReal / dt) * (cfg.diasUteis || dt);
+
+  return { dailyByCore, totals, medias, totalReal, tendencia, daysInMonth };
 }
 
-// ====================== RENDER DASHBOARD ======================
-function renderDashboard() {
-  const m = computeMetrics();
+// ====================== COMPUTED METRICS: MÉDIA FORÇA / SECO ======================
+function computeForcaMetrics() {
+  const cfg = STATE.config;
+  const monthPrefix = cfg.month;
+  const monthRecords = STATE.records.filter(r => r.date && r.date.startsWith(monthPrefix) && r.area === 'forca');
 
-  // Meta badge
-  setText('metaBadgeValue', m.metaTotal);
-  setText('metaBadgeMonth', getMonthLabel(STATE.config.month));
+  const daily = { TPM: [], TPS: [], TPD: [], Total: [] };
+  const daysInMonth = 31; // Simplificado
 
-  // KPIs
-  setText('kpiMeta',  m.metaTotal);
-  setText('kpiProg',  m.progAcum);
-  setText('kpiReal',  m.realAcum);
-  setText('kpiSaldo', m.saldo);
-
-  // Gauge
-  animateGauge(m.pct);
-
-  // Lines
-  renderLines(m.byLine);
-
-  // Chart
-  renderChart(m);
-
-  // Today bulletin
-  const tbDate = document.getElementById('tbDate');
-  if (tbDate) tbDate.textContent = todayStr();
-  setText('tbProg', m.todayProg);
-  setText('tbReal', m.todayReal);
-  const tbVar = document.getElementById('tbVar');
-  if (tbVar) {
-    tbVar.textContent = (m.todayVar >= 0 ? '+' : '') + m.todayVar;
-    tbVar.style.color = m.todayVar >= 0 ? 'var(--success)' : 'var(--danger)';
-  }
-  setText('tbAcum', m.realAcum);
-  const tbTend = document.getElementById('tbTend');
-  if (tbTend) {
-    const tendPct = STATE.config.metaTotal > 0 ? ((m.tendencia / STATE.config.metaTotal) * 100).toFixed(1) : '0';
-    tbTend.textContent = `${m.tendencia} (${tendPct}%)`;
-    tbTend.style.color = m.tendencia >= STATE.config.metaTotal ? 'var(--success)' : 'var(--warning)';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateKey = `${monthPrefix}-${String(d).padStart(2, '0')}`;
+    const dayRecs = monthRecords.filter(r => r.date === dateKey);
+    
+    const tpm = dayRecs.filter(r => r.line === 'TPM').reduce((s,r) => s+(Number(r.real)||0), 0);
+    const tps = dayRecs.filter(r => r.line === 'TPS').reduce((s,r) => s+(Number(r.real)||0), 0);
+    const tpd = dayRecs.filter(r => r.line === 'TPD').reduce((s,r) => s+(Number(r.real)||0), 0);
+    
+    daily.TPM.push(tpm); daily.TPS.push(tps); daily.TPD.push(tpd);
+    daily.Total.push(tpm + tps + tpd);
   }
 
-  // Obs
-  renderObs();
+  const totals = {
+    TPM: daily.TPM.reduce((s,v)=>s+v, 0),
+    TPS: daily.TPS.reduce((s,v)=>s+v, 0),
+    TPD: daily.TPD.reduce((s,v)=>s+v, 0),
+    Total: daily.Total.reduce((s,v)=>s+v, 0)
+  };
 
-  // Equipment
-  renderEquipment();
+  const pct = cfg.metaTotal > 0 ? (totals.Total / cfg.metaTotal) * 100 : 0;
+  const dt = cfg.diasTrabalhados || 1;
+  const tendencia = (totals.Total / dt) * (cfg.diasUteis || 1);
+
+  return { daily, totals, pct, tendencia, daysInMonth };
+}
+
+// ====================== STANDARDIZED REPORT ENGINE (RULE 4) ======================
+function generateExecutiveReport(area, m) {
+  const cfg = STATE.config;
+  const isHealthy = m.tendencia >= cfg.metaTotal;
+  const alertIcon = isHealthy ? '✅' : '🚨';
+  const statusTab = isHealthy ? '✅' : '🚨';
+  const tone = isHealthy ? 'Foco mantido' : 'ALERTA: CRITICAL GAP DETECTED';
+
+  const summary = `Produção atual de ${m.totalReal || m.totals.Total} unidades. Projeção de fechamento em **${Math.round(m.tendencia)}** unidades (${((m.tendencia/cfg.metaTotal)*100).toFixed(1)}% da meta).`;
+
+  let html = `
+    <div class="report-exec-summary">${alertIcon} <strong>${tone}</strong>: ${summary}</div>
+    <table class="report-table-mini">
+      <thead>
+        <tr><th>Indicador</th><th>Realizado</th><th>Meta Mensal</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Total Geral</td>
+          <td><strong>${m.totalReal || m.totals.Total}</strong></td>
+          <td>${cfg.metaTotal}</td>
+          <td>${statusTab}</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="report-grid">
+      <div>
+        <strong>📈 Ganhos e Observações:</strong>
+        <ul class="report-bullets">
+          <li><em>${STATE.obs[0] || 'Produção segue conforme planejado.'}</em></li>
+          <li><em>${STATE.obs[1] || 'Monitoramento de insumos ativo.'}</em></li>
+        </ul>
+      </div>
+      <div>
+        <strong>⚠️ Alertas e Sugestões:</strong>
+        <ul class="report-bullets">
+          <li>Desvio projetado: <strong>${Math.round(cfg.metaTotal - m.tendencia)} unidades</strong>.</li>
+          <li>Sugestão: <em>${STATE.obs[2] || 'Aumentar produtividade no próximo turno.'}</em></li>
+        </ul>
+      </div>
+    </div>
+  `;
+  return html;
+}
+
+// ====================== RENDER DASHBOARD: DISTRIBUIÇÃO (TPD) ======================
+function renderDashboardDistrib() {
+  const m = computeDistribMetrics();
+  const cfg = STATE.config;
+
+  // Header & KPIs
+  setText('metaDistribValue', cfg.metaTPD);
+  setText('kpiEnrMedia', m.medias.ENR.toFixed(1));
+  setText('kpiJcMedia',  m.medias.JC.toFixed(1));
+  setText('kpiEmpMedia', m.medias.EMP.toFixed(1));
+  setText('kpiTotalMedia', m.medias.Total.toFixed(1));
+  setText('kpiDistribReject', m.totals.LAB);
+
+  // Charts
+  renderDistribCharts(m);
+  
+  // BI Table
+  renderBITable(m);
+  
+  // Report
+  const reportEl = document.getElementById('reportDistrib');
+  if (reportEl) reportEl.innerHTML = generateExecutiveReport('distrib', m);
+}
+
+// ====================== RENDER DASHBOARD: MÉDIA FORÇA / SECO ======================
+function renderDashboardForca() {
+  const m = computeForcaMetrics();
+  const cfg = STATE.config;
+
+  setText('metaForcaValue', cfg.metaTotal);
+  setText('kpiForcaMeta', cfg.metaTotal);
+  setText('kpiForcaReal', m.totals.Total);
+  setText('kpiForcaSaldo', Math.max(0, cfg.metaTotal - m.totals.Total));
+  setText('forcaPct', Math.round(m.pct) + '%');
+
+  renderForcaCharts(m);
+  
+  // Rule 3: Separated Indicators
+  const grid = document.getElementById('forcaLinesGrid');
+  if (grid) {
+    grid.innerHTML = `
+      <div class="line-card">
+         <div class="line-header"><div class="line-badge line-badge-tpm">TPM</div><span class="line-name">Média Força</span></div>
+         <div class="line-kpis">
+           <div class="line-kpi"><span class="lk-label">Prog.</span><span class="lk-val">${cfg.metaTPM}</span></div>
+           <div class="line-kpi"><span class="lk-label">Real.</span><span class="lk-val lk-green">${m.totals.TPM}</span></div>
+         </div>
+      </div>
+      <div class="line-card">
+         <div class="line-header"><div class="line-badge line-badge-tps">TPS</div><span class="line-name">Seco</span></div>
+         <div class="line-kpis">
+           <div class="line-kpi"><span class="lk-label">Prog.</span><span class="lk-val">${cfg.metaTPS}</span></div>
+           <div class="line-kpi"><span class="lk-label">Real.</span><span class="lk-val lk-green">${m.totals.TPS}</span></div>
+         </div>
+      </div>
+      <div class="line-card">
+         <div class="line-header"><div class="line-badge line-badge-tpd">TPD</div><span class="line-name">Distribuição (Aux)</span></div>
+         <div class="line-kpis">
+           <div class="line-kpi"><span class="lk-label">Prog.</span><span class="lk-val">${cfg.metaTPD}</span></div>
+           <div class="line-kpi"><span class="lk-label">Real.</span><span class="lk-val lk-green">${m.totals.TPD}</span></div>
+         </div>
+      </div>
+    `;
+  }
+
+  const reportEl = document.getElementById('reportForcaSeco');
+  if (reportEl) reportEl.innerHTML = generateExecutiveReport('forca', m);
 }
 
 function setText(id, val) {
   const el = document.getElementById(id);
   if (el) el.textContent = val;
+}
+
+// ====================== BI GRID TABLE ======================
+function renderBITable(m) {
+  const container = document.getElementById('distribTableContainer');
+  if (!container) return;
+
+  const days = m.daysInMonth;
+  let html = `<table class="bi-table"><thead><tr><th class="bi-col-fixed">NÚCLEO</th>`;
+  for(let d=1; d<=days; d++) html += `<th>${d}</th>`;
+  html += `<th class="bi-avg-col">MÉDIA</th></tr></thead><tbody>`;
+
+  const cores = [
+    {id:'ENR', label:'🔵 ENR'},
+    {id:'JC',  label:'💎 JC-TRI'},
+    {id:'EMP', label:'🌲 EMP'},
+    {id:'LAB', label:'🔴 LAB'}
+  ];
+
+  cores.forEach(c => {
+    html += `<tr><td class="bi-col-fixed">${c.label}</td>`;
+    for(let d=0; d<days; d++) {
+      const val = m.dailyByCore[c.id][d];
+      html += `<td>${val || ''}</td>`;
+    }
+    const mediaVal = c.id === 'LAB' ? m.totals[c.id] : m.medias[c.id].toFixed(1);
+    html += `<td class="bi-avg-col">${mediaVal}</td></tr>`;
+  });
+
+  html += `</tbody></table>`;
+  container.innerHTML = html;
 }
 
 function animateGauge(pct) {
@@ -413,110 +540,137 @@ function renderLines(byLine) {
   });
 }
 
-// ====================== CHART ======================
-function renderChart(m) {
-  const ctx = document.getElementById('mainChart');
-  if (!ctx) return;
+// ====================== CHARTS: DISTRIBUIÇÃO ======================
+function renderDistribCharts(m) {
+  const ctxQty = document.getElementById('chartDistribQty');
+  const ctxPct = document.getElementById('chartDistribPct');
+  if (!ctxQty || !ctxPct) return;
 
-  const today = new Date();
-  const todayDay = today.getDate();
-  const labels = m.dailyData.map(d => d.day);
+  const labels = Array.from({length: m.daysInMonth}, (_, i) => i + 1);
 
-  const progData = m.dailyData.map(d => d.prog || null);
-  const realData = m.dailyData.map(d => d.real || null);
-  const acumData = m.acumData;
+  if (STATE.charts.distribQty) STATE.charts.distribQty.destroy();
+  if (STATE.charts.distribPct) STATE.charts.distribPct.destroy();
 
-  const barColors = m.dailyData.map(d => {
-    if (d.day === todayDay) return 'rgba(102,187,106,0.9)';
-    if (d.day < todayDay)  return 'rgba(46,125,50,0.65)';
-    return 'rgba(46,125,50,0.18)';
-  });
-  const progColors = m.dailyData.map(d =>
-    d.day <= todayDay ? 'rgba(144,164,174,0.5)' : 'rgba(144,164,174,0.18)'
-  );
-
-  // Safe destroy — detach from DOM before recreating to avoid resize loop
-  if (STATE.chart) {
-    STATE.chart.destroy();
-    STATE.chart = null;
-  }
-
-  STATE.chart = new Chart(ctx, {
+  // Qty Stacked Chart
+  STATE.charts.distribQty = new Chart(ctxQty, {
     type: 'bar',
     data: {
       labels,
       datasets: [
-        {
-          label: 'Programado',
-          data: progData,
-          backgroundColor: progColors,
-          borderColor: 'rgba(144,164,174,0.3)',
-          borderWidth: 1,
-          borderRadius: 3,
-          order: 3,
-        },
-        {
-          label: 'Realizado',
-          data: realData,
-          backgroundColor: barColors,
-          borderColor: 'rgba(76,175,80,0.4)',
-          borderWidth: 1,
-          borderRadius: 3,
-          order: 2,
-        },
-        {
-          label: 'Acumulado',
-          data: acumData,
-          type: 'line',
-          borderColor: '#FFA726',
-          backgroundColor: 'rgba(255,167,38,0.06)',
-          borderWidth: 2,
-          pointRadius: 3,
-          pointHoverRadius: 6,
-          pointBackgroundColor: '#FFA726',
-          fill: true,
-          tension: 0.4,
-          order: 1,
-          yAxisID: 'y2',
-        },
-      ],
+        { label: 'ENR', data: m.dailyByCore.ENR, backgroundColor: '#9CCC65', stack: 'stack0' },
+        { label: 'JC-TRI', data: m.dailyByCore.JC, backgroundColor: '#26C6DA', stack: 'stack0' },
+        { label: 'EMP', data: m.dailyByCore.EMP, backgroundColor: '#2E7D32', stack: 'stack0' },
+        { label: 'LAB', data: m.dailyByCore.LAB, backgroundColor: '#D32F2F', stack: 'stack0' }
+      ]
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,   // CRITICAL: let the container define the height
-      animation: { duration: 600 },
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: '#1C2333',
-          borderColor: 'rgba(255,255,255,0.1)',
-          borderWidth: 1,
-          titleColor: '#E6EDF3',
-          bodyColor: '#8B949E',
-          padding: 10,
-          callbacks: { title: items => `Dia ${items[0].label}` },
-        },
-      },
+      responsive: true, maintainAspectRatio: false,
       scales: {
-        x: {
-          grid: { color: 'rgba(255,255,255,0.04)' },
-          ticks: { color: '#8B949E', font: { size: 11 } },
-        },
-        y: {
-          position: 'left',
-          grid: { color: 'rgba(255,255,255,0.04)' },
-          ticks: { color: '#8B949E', font: { size: 11 }, stepSize: 1 },
-          title: { display: true, text: 'Diário', color: '#586069', font: { size: 11 } },
-        },
-        y2: {
-          position: 'right',
-          grid: { drawOnChartArea: false },
-          ticks: { color: '#FFA726', font: { size: 11 } },
-          title: { display: true, text: 'Acumulado', color: '#FFA726', font: { size: 11 } },
-        },
+        x: { stacked: true, grid: { display: false } },
+        y: { stacked: true, grid: { color: 'rgba(255,255,255,0.05)' } }
       },
+      plugins: { legend: { position: 'top', labels: { color: '#8B949E', boxWidth: 12 } } }
+    }
+  });
+
+  // Pct Attainment Chart (Draft)
+  STATE.charts.distribPct = new Chart(ctxPct, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: '% Atingimento',
+        data: labels.map((_, i) => {
+          const total = m.dailyByCore.ENR[i] + m.dailyByCore.JC[i] + m.dailyByCore.EMP[i];
+          const metaDiaria = STATE.config.metaTPD / (STATE.config.diasUteis || 1);
+          return (total / metaDiaria) * 100;
+        }),
+        backgroundColor: 'rgba(76,175,80,0.4)',
+        borderColor: 'var(--green-400)',
+        borderWidth: 1
+      }]
     },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { y: { beginAtZero: true, max: 150, grid: { color: 'rgba(255,255,255,0.05)' } } },
+      plugins: {
+        annotation: { // If plugin available
+          annotations: { line1: { type: 'line', yMin: 100, yMax: 100, borderColor: '#D32F2F', borderWidth: 2 } }
+        }
+      }
+    }
+  });
+}
+
+// ====================== CHARTS: MÉDIA FORÇA / SECO ======================
+function renderForcaCharts(m) {
+  const ctxTPM = document.getElementById('chartTPM');
+  const ctxTPS = document.getElementById('chartTPS');
+  if (!ctxTPM || !ctxTPS) return;
+
+  if (STATE.charts.forcaTPM) STATE.charts.forcaTPM.destroy();
+  if (STATE.charts.forcaTPS) STATE.charts.forcaTPS.destroy();
+
+  const labels = Array.from({length: 31}, (_, i) => i + 1);
+
+  // TPM Chart
+  STATE.charts.forcaTPM = new Chart(ctxTPM, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { 
+          label: 'Realizado TPM', 
+          data: m.daily.TPM, 
+          borderColor: '#4CAF50', 
+          backgroundColor: 'rgba(76,175,80,0.1)', 
+          fill: true, 
+          tension: 0.4 
+        },
+        { 
+          label: 'Meta Diária', 
+          data: new Array(31).fill(STATE.config.metaTPM / (STATE.config.diasUteis || 1)), 
+          borderColor: 'rgba(255,255,255,0.2)', 
+          borderDash: [5,5], 
+          pointRadius: 0 
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } } },
+      plugins: { legend: { labels: { color: '#8B949E' } } }
+    }
+  });
+
+  // TPS Chart
+  STATE.charts.forcaTPS = new Chart(ctxTPS, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { 
+          label: 'Realizado TPS', 
+          data: m.daily.TPS, 
+          borderColor: '#2196F3', 
+          backgroundColor: 'rgba(33,150,243,0.1)', 
+          fill: true, 
+          tension: 0.4 
+        },
+        { 
+          label: 'Meta Diária', 
+          data: new Array(31).fill(STATE.config.metaTPS / (STATE.config.diasUteis || 1)), 
+          borderColor: 'rgba(255,255,255,0.2)', 
+          borderDash: [5,5], 
+          pointRadius: 0 
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } } },
+      plugins: { legend: { labels: { color: '#8B949E' } } }
+    }
   });
 }
 
@@ -700,287 +854,140 @@ function resetSettings() {
 }
 
 // ====================== UPLOAD / MANUAL ENTRY ======================
-let manualCount = 1;
+function initializeManualEntries() {
+  const cDistrib = document.getElementById('manualEntriesDistrib');
+  const cForca = document.getElementById('manualEntriesForca');
+  if (cDistrib && !cDistrib.hasChildNodes()) addManualEntry('distrib');
+  if (cForca && !cForca.hasChildNodes()) addManualEntry('forca');
+}
 
-function addManualEntry() {
-  const idx = manualCount++;
-  const container = document.getElementById('manualEntries');
+function addManualEntry(area) {
+  const containerId = area === 'distrib' ? 'manualEntriesDistrib' : 'manualEntriesForca';
+  const container = document.getElementById(containerId);
+  const idx = container.children.length;
+  
   const div = document.createElement('div');
   div.className = 'manual-entry';
   div.dataset.entry = idx;
   div.innerHTML = `
     <div class="entry-header">
       <span class="entry-num">Registro #${idx + 1}</span>
-      <button class="btn-remove-entry" onclick="removeManualEntry(${idx})">✕ Remover</button>
+      <button class="btn-remove-entry" onclick="this.parentElement.parentElement.remove()">✕</button>
     </div>
     <div class="entry-fields">
-      <div class="form-group"><label>Data</label><input type="date" class="form-input entry-date" id="entryDate${idx}" /></div>
+      <div class="form-group"><label>Data</label><input type="date" class="form-input entry-date" value="${todayDateStr()}" /></div>
       <div class="form-group"><label>Linha</label>
-        <select class="form-input entry-line" id="entryLine${idx}">
-          <option value="">Selecionar...</option>
-          <option value="TPM">TPM – Média Força</option>
-          <option value="TPD">TPD – Distribuição</option>
+        <select class="form-input entry-line">
+          <option value="TPD" ${area==='distrib'?'selected':''}>TPD – Distribuição</option>
+          <option value="TPM" ${area==='forca'?'selected':''}>TPM – Média Força</option>
           <option value="TPS">TPS – Seco</option>
         </select>
       </div>
-      <div class="form-group"><label>Programado</label><input type="number" class="form-input entry-prog" id="entryProg${idx}" min="0" placeholder="0" /></div>
-      <div class="form-group"><label>Realizado</label><input type="number" class="form-input entry-real" id="entryReal${idx}" min="0" placeholder="0" /></div>
-      <div class="form-group"><label>Descrição / OS</label><input type="text" class="form-input entry-desc" id="entryDesc${idx}" placeholder="Nº da OS..." /></div>
+      <div class="form-group"><label>Prog.</label><input type="number" class="form-input entry-prog" placeholder="0" /></div>
+      <div class="form-group"><label>Real.</label><input type="number" class="form-input entry-real" placeholder="0" /></div>
+      <div class="form-group"><label>OS / Desc.</label><input type="text" class="form-input entry-desc" placeholder="OS..." /></div>
     </div>
   `;
   container.appendChild(div);
 }
 
-function removeManualEntry(idx) {
-  const el = document.querySelector(`[data-entry="${idx}"]`);
-  if (el) el.remove();
-}
-
-async function saveManualEntries() {
-  const entries = document.querySelectorAll('.manual-entry');
+async function saveManualEntries(area) {
+  const containerId = area === 'distrib' ? 'manualEntriesDistrib' : 'manualEntriesForca';
+  const statusId = area === 'distrib' ? 'manualStatusDistrib' : 'manualStatusForca';
+  const entries = document.querySelectorAll(`#${containerId} .manual-entry`);
+  
   let newRecords = [];
-  let errors = 0;
-
   entries.forEach(entry => {
-    const idx = entry.dataset.entry;
-    const date = document.getElementById(`entryDate${idx}`)?.value;
-    const line = document.getElementById(`entryLine${idx}`)?.value;
-    const prog = parseInt(document.getElementById(`entryProg${idx}`)?.value) || 0;
-    const real = parseInt(document.getElementById(`entryReal${idx}`)?.value) || 0;
-    const desc = document.getElementById(`entryDesc${idx}`)?.value || '';
+    const date = entry.querySelector('.entry-date').value;
+    const line = entry.querySelector('.entry-line').value;
+    const prog = parseInt(entry.querySelector('.entry-prog').value) || 0;
+    const real = parseInt(entry.querySelector('.entry-real').value) || 0;
+    const desc = entry.querySelector('.entry-desc').value || '';
 
-    if (!date || !line) { errors++; return; }
-
-    newRecords.push({
-      date,
-      line,
-      prog,
-      real,
-      description: desc,
-      origin: 'manual'
-    });
+    if (date && line) {
+      newRecords.push({
+        date, line, prog, real, 
+        description: desc, 
+        area: area,
+        core_type: area === 'distrib' ? detectCoreType(desc) : null,
+        origin: 'manual'
+      });
+    }
   });
 
-  if (newRecords.length > 0) {
-    try {
-      const { data, error } = await supabase.from('production_records').insert(newRecords).select();
-      if (error) throw error;
-      
-      // Update local state with the returned records (including IDs)
-      data.forEach(r => {
-        STATE.records.push({
-          id: r.id,
-          date: r.date,
-          line: r.line,
-          prog: r.prog,
-          real: r.real,
-          desc: r.description,
-          source: r.origin
-        });
-      });
+  if (newRecords.length === 0) return;
 
-      saveToStorage();
-      renderDataTable();
-      renderDashboard();
-      
-      if (errors > 0) {
-        showStatus('manualStatus', `⚠️ ${newRecords.length} registro(s) salvos no banco. ${errors} pendentes.`, 'error');
-      } else {
-        showStatus('manualStatus', `✅ ${newRecords.length} registro(s) salvos no Supabase!`, 'success');
-        clearManualForm();
-      }
-    } catch (err) {
-      showStatus('manualStatus', '🚨 Erro ao salvar no banco: ' + err.message, 'error');
-    }
+  try {
+    const { data, error } = await supabase.from('production_records').insert(newRecords).select();
+    if (error) throw error;
+    
+    // Sync local state
+    data.forEach(r => {
+      STATE.records.push({
+        id: r.id, date: r.date, line: r.line, prog: r.prog, real: r.real, 
+        desc: r.description, area: r.area, coreType: r.core_type, source: r.origin
+      });
+    });
+
+    showStatus(statusId, `✅ ${data.length} registros salvos!`, 'success');
+    document.getElementById(containerId).innerHTML = '';
+    addManualEntry(area);
+    renderDataTable();
+  } catch (err) {
+    showStatus(statusId, '🚨 Erro: ' + err.message, 'error');
   }
 }
 
-function clearManualForm() {
-  const container = document.getElementById('manualEntries');
-  if (!container) return;
-  // reset to single empty entry
-  manualCount = 1;
-  container.innerHTML = `
-    <div class="manual-entry" data-entry="0">
-      <div class="entry-header">
-        <span class="entry-num">Registro #1</span>
-        <button class="btn-remove-entry" onclick="removeManualEntry(0)" style="display:none">✕</button>
-      </div>
-      <div class="entry-fields">
-        <div class="form-group"><label>Data</label><input type="date" class="form-input entry-date" id="entryDate0" /></div>
-        <div class="form-group"><label>Linha</label>
-          <select class="form-input entry-line" id="entryLine0">
-            <option value="">Selecionar...</option>
-            <option value="TPM">TPM – Média Força</option>
-            <option value="TPD">TPD – Distribuição</option>
-            <option value="TPS">TPS – Seco</option>
-          </select>
-        </div>
-        <div class="form-group"><label>Programado</label><input type="number" class="form-input entry-prog" id="entryProg0" min="0" placeholder="0" /></div>
-        <div class="form-group"><label>Realizado</label><input type="number" class="form-input entry-real" id="entryReal0" min="0" placeholder="0" /></div>
-        <div class="form-group"><label>Descrição / OS</label><input type="text" class="form-input entry-desc" id="entryDesc0" placeholder="Nº da OS..." /></div>
-      </div>
-    </div>
-  `;
-}
-
-// ====================== FILE UPLOAD ======================
-function handleFileUpload(event) {
+async function handleFileUpload(event, area) {
   const file = event.target.files[0];
+  const statusId = area === 'distrib' ? `uploadStatusDistrib` : `uploadStatusForca`;
   if (!file) return;
 
-  const ext = file.name.split('.').pop().toLowerCase();
-  const statusEl = document.getElementById('uploadStatus');
-  statusEl.style.display = 'block';
-  statusEl.className = 'upload-status info';
-  statusEl.textContent = `⏳ Processando "${file.name}"...`;
+  showStatus(statusId, '⏳ Processando arquivo...', 'info');
 
   const reader = new FileReader();
-  reader.onload = function(e) {
+  reader.onload = async (e) => {
     try {
-      if (ext === 'csv') {
-        parseCSV(e.target.result, file.name);
-      } else {
-        // XLSX
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-        parseXLSXRows(rows, file.name);
-      }
-    } catch (err) {
-      showStatus('uploadStatus', `🚨 Erro ao processar o arquivo: ${err.message}`, 'error');
-    }
-  };
-  reader.onerror = () => showStatus('uploadStatus', '🚨 Erro ao ler o arquivo.', 'error');
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(firstSheet);
 
-  if (ext === 'csv') reader.readAsText(file, 'UTF-8');
-  else reader.readAsArrayBuffer(file);
-}
-
-async function parseXLSXRows(rows, filename) {
-  if (rows.length < 2) {
-    showStatus('uploadStatus', '⚠️ Planilha vazia ou sem dados.', 'error');
-    return;
-  }
-
-  const header = rows[0].map(h => String(h || '').toLowerCase().trim());
-  const colMap = {
-    date: findCol(header, ['data','date','dt']),
-    line: findCol(header, ['linha','line','tipo']),
-    prog: findCol(header, ['programado','prog','planned']),
-    real: findCol(header, ['realizado','real','actual']),
-    desc: findCol(header, ['descricao','desc','os','ordem']),
-  };
-
-  let recordsToInsert = [];
-  for (let i = 1; i < rows.length; i++) {
-    const row = rows[i];
-    if (!row || row.length === 0) continue;
-
-    let date = colMap.date >= 0 ? row[colMap.date] : null;
-    let line = colMap.line >= 0 ? String(row[colMap.line] || '').toUpperCase().trim() : '';
-    const prog = colMap.prog >= 0 ? (Number(row[colMap.prog]) || 0) : 0;
-    const real = colMap.real >= 0 ? (Number(row[colMap.real]) || 0) : 0;
-    const desc = colMap.desc >= 0 ? String(row[colMap.desc] || '') : '';
-
-    if (date) {
-      if (typeof date === 'number') {
-        const jsDate = new Date(Math.round((date - 25569) * 86400 * 1000));
-        const y = jsDate.getUTCFullYear();
-        const m = String(jsDate.getUTCMonth() + 1).padStart(2,'0');
-        const d = String(jsDate.getUTCDate()).padStart(2,'0');
-        date = `${y}-${m}-${d}`;
-      } else {
-        date = String(date).trim();
-        const parts = date.split('/');
-        if (parts.length === 3) date = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
-      }
-    }
-
-    if (line.includes('MED') || line.includes('MÉDIA') || line === 'TPM') line = 'TPM';
-    else if (line.includes('DIST') || line === 'TPD') line = 'TPD';
-    else if (line.includes('SECO') || line === 'TPS') line = 'TPS';
-
-    if (!date || !['TPM','TPD','TPS'].includes(line)) continue;
-
-    recordsToInsert.push({
-      date,
-      line,
-      prog,
-      real,
-      description: desc,
-      origin: `xlsx:${filename}`
-    });
-  }
-
-  if (recordsToInsert.length > 0) {
-    try {
-      const { data, error } = await supabase.from('production_records').insert(recordsToInsert).select();
+      const newRecords = parseXLSXRows(rows, area);
+      const { data: dbData, error } = await supabase.from('production_records').insert(newRecords).select();
       if (error) throw error;
-      
-      // Update local state
-      data.forEach(r => {
+
+      dbData.forEach(r => {
         STATE.records.push({
-          id: r.id, date: r.date, line: r.line, prog: r.prog, real: r.real, desc: r.description, source: r.origin
+          id: r.id, date: r.date, line: r.line, prog: r.prog, real: r.real, 
+          desc: r.description, area: r.area, coreType: r.core_type, source: r.origin
         });
       });
 
-      saveToStorage();
+      showStatus(statusId, `✅ ${dbData.length} registros importados com sucesso!`, 'success');
       renderDataTable();
-      renderDashboard();
-      showStatus('uploadStatus', `✅ ${recordsToInsert.length} registro(s) importados do Supabase!`, 'success');
-      showUploadPreview(rows.slice(0, 6), rows[0]);
+      if (area === 'distrib') renderDashboardDistrib();
+      else renderDashboardForca();
     } catch (err) {
-      showStatus('uploadStatus', `🚨 Erro ao salvar no banco: ${err.message}`, 'error');
+      showStatus(statusId, '🚨 Erro na importação: ' + err.message, 'error');
     }
-  }
+  };
+  reader.readAsArrayBuffer(file);
 }
 
-function parseCSV(text, filename) {
-  const lines = text.split('\n').filter(l => l.trim());
-  const rows = lines.map(l => l.split(/[,;]/).map(c => c.trim().replace(/^"|"$/g, '')));
-  parseXLSXRows(rows, filename);
-}
-
-function findCol(header, names) {
-  for (const name of names) {
-    const idx = header.findIndex(h => h.includes(name));
-    if (idx >= 0) return idx;
-  }
-  return -1;
-}
-
-function showUploadPreview(rows, header) {
-  const preview = document.getElementById('uploadPreview');
-  if (!preview || !rows.length) return;
-  let html = '<table class="data-table"><thead><tr>';
-  (rows[0] || []).forEach(h => { html += `<th>${h}</th>`; });
-  html += '</tr></thead><tbody>';
-  rows.slice(1).forEach(row => {
-    html += '<tr>';
-    row.forEach(cell => { html += `<td>${cell}</td>`; });
-    html += '</tr>';
-  });
-  html += '</tbody></table>';
-  preview.style.display = 'block';
-  preview.innerHTML = '<p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">Prévia da planilha importada:</p>' + html;
-}
-
-// Drag and drop
-function initDropZone() {
-  const dz = document.getElementById('dropZone');
-  if (!dz) return;
-  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
-  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
-  dz.addEventListener('drop', e => {
-    e.preventDefault();
-    dz.classList.remove('drag-over');
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      document.getElementById('fileInput').files = files;
-      handleFileUpload({ target: { files } });
-    }
+function parseXLSXRows(rows, area) {
+  return rows.map(row => {
+    const desc = row['Descrição'] || row['OS'] || '';
+    return {
+      date: row['Data'] || todayDateStr(),
+      line: row['Linha'] || (area === 'distrib' ? 'TPD' : 'TPM'),
+      prog: parseInt(row['Programado'] || row['Prog']) || 0,
+      real: parseInt(row['Realizado'] || row['Real']) || 0,
+      description: desc,
+      area: area,
+      core_type: area === 'distrib' ? detectCoreType(desc) : null,
+      origin: 'excel'
+    };
   });
 }
 
@@ -991,30 +998,29 @@ function renderDataTable() {
 
   const filterLine = document.getElementById('filterLine')?.value || '';
   const currentMonth = STATE.config.month;
+  
   let records = STATE.records.filter(r => r.date && r.date.startsWith(currentMonth));
   if (filterLine) records = records.filter(r => r.line === filterLine);
+  
   records.sort((a, b) => b.date.localeCompare(a.date));
 
   if (records.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" class="table-empty">Nenhum registro encontrado para o mês atual.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="table-empty">Nenhum registro encontrado para o mês atual.</td></tr>';
     return;
   }
 
   tbody.innerHTML = records.map(r => {
-    const varVal = (Number(r.real) || 0) - (Number(r.prog) || 0);
-    const varColor = varVal >= 0 ? 'var(--success)' : 'var(--danger)';
-    const varStr = (varVal >= 0 ? '+' : '') + varVal;
+    const areaLabel = r.area === 'distrib' ? '🏭 DIST' : '⚡ FORÇA';
+    const coreLabel = r.coreType ? ` [${r.coreType}]` : '';
     const lineBadgeCls = r.line === 'TPM' ? 'line-badge-tpm' : r.line === 'TPD' ? 'line-badge-tpd' : 'line-badge-tps';
-    const [y,m,d] = (r.date || '').split('-');
-    const displayDate = d && m && y ? `${d}/${m}/${y}` : r.date;
+    
     return `<tr>
-      <td>${displayDate}</td>
-      <td><span class="line-badge ${lineBadgeCls}">${r.line}</span></td>
-      <td><strong>${r.prog}</strong></td>
+      <td>${r.date}</td>
+      <td><span class="line-badge ${lineBadgeCls}">${r.line}${coreLabel}</span></td>
+      <td>${r.prog}</td>
       <td><strong style="color:var(--success)">${r.real}</strong></td>
-      <td><strong style="color:${varColor}">${varStr}</strong></td>
-      <td style="color:var(--text-muted)">${r.desc || '—'}</td>
-      <td style="font-size:11px;color:var(--text-muted)">${r.source === 'manual' ? '✏️ Manual' : r.source?.startsWith('xlsx') ? '📄 Importado' : '🔄 Amostra'}</td>
+      <td>${r.desc || '—'}</td>
+      <td style="font-size:11px;color:var(--text-muted)">${areaLabel} (${r.source})</td>
       <td><button class="btn-del-row" onclick="deleteRecord('${r.id}')">✕</button></td>
     </tr>`;
   }).join('');
@@ -1023,68 +1029,77 @@ function renderDataTable() {
 function filterTable() { renderDataTable(); }
 
 async function deleteRecord(id) {
-  if (!confirm('Remover este registro permanentemente do banco de dados?')) return;
+  if (!confirm('Remover este registro permanentemente?')) return;
   try {
     const { error } = await supabase.from('production_records').delete().eq('id', id);
     if (error) throw error;
-    
     STATE.records = STATE.records.filter(r => String(r.id) !== String(id));
-    saveToStorage();
     renderDataTable();
-    renderDashboard();
+    if (document.getElementById('page-distribuicao').classList.contains('active')) renderDashboardDistrib();
+    else renderDashboardForca();
   } catch (err) {
     alert('Erro ao excluir: ' + err.message);
   }
 }
 
+function initDropZones() {
+  ['Distrib', 'Forca'].forEach(areaSuffix => {
+    const dz = document.getElementById(`dropZone${areaSuffix}`);
+    const area = areaSuffix.toLowerCase();
+    if (!dz) return;
+    dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+    dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+    dz.addEventListener('drop', e => {
+      e.preventDefault();
+      dz.classList.remove('drag-over');
+      const files = e.dataTransfer.files;
+      if (files.length > 0) handleFileUpload({ target: { files } }, area);
+    });
+  });
+}
+
+function exportReport(area) {
+  alert(`Exportação de relatório PDF para ${area} será processada com os dados atuais.`);
+}
+
 function exportData() {
   const currentMonth = STATE.config.month;
   const records = STATE.records.filter(r => r.date && r.date.startsWith(currentMonth));
-  const headers = ['Data', 'Linha', 'Programado', 'Realizado', 'Variação', 'Descrição', 'Origem'];
-  const rows = records.map(r => {
-    const v = (Number(r.real)||0) - (Number(r.prog)||0);
-    return [r.date, r.line, r.prog, r.real, v, r.desc, r.source];
-  });
+  const headers = ['Data', 'Area', 'Linha', 'Núcleo', 'Prog', 'Real', 'Desc'];
+  const rows = records.map(r => [r.date, r.area, r.line, r.coreType||'', r.prog, r.real, r.desc]);
   const csv = [headers, ...rows].map(r => r.join(';')).join('\n');
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url;
-  a.download = `trael_producao_${currentMonth}.csv`;
+  a.href = URL.createObjectURL(blob);
+  a.download = `trael_export_${currentMonth}.csv`;
   a.click();
-  URL.revokeObjectURL(url);
 }
 
-// ====================== UTILS ======================
 function showStatus(id, msg, type) {
   const el = document.getElementById(id);
   if (!el) return;
   el.style.display = 'block';
   el.className = `upload-status ${type}`;
   el.textContent = msg;
-  setTimeout(() => { el.style.display = 'none'; }, 5000);
+  setTimeout(() => { if(el) el.style.display = 'none'; }, 6000);
 }
 
 // ====================== INIT ======================
 document.addEventListener('DOMContentLoaded', async () => {
-  // 1. Initial local load
+  // Update UI immediately (cached values)
   loadFromStorage();
+  updateClock();
+  setInterval(updateClock, 1000);
 
-  // 2. Try Supabase cloud load
+  // Sync with Supabase
   await loadDataFromDB();
 
-  // 3. Fallback/Defaults
-  if (STATE.records.length === 0) {
-    seedSampleData();
-  }
   if (!STATE.config.month) {
     const now = new Date();
     STATE.config.month = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   }
 
-  initDropZone();
-  updateClock();
-  setInterval(updateClock, 1000);
-
-  renderDashboard();
+  // Set default view
+  showPage('distribuicao');
+  initDropZones();
 });
