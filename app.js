@@ -116,7 +116,7 @@ async function loadDataFromDB() {
       .lte('date', `${currentMonth}-${lastDay}`);
     
     if (recordsData) {
-      STATE.records = recordsData.map(r => ({
+      const rawRecords = recordsData.map(r => ({
         id: r.id,
         date: r.date,
         line: r.line,
@@ -127,6 +127,18 @@ async function loadDataFromDB() {
         coreType: r.core_type === 'JC-TRI' ? 'JC' : r.core_type, // Corrige legados JC-TRIF
         source: r.origin
       }));
+
+      // Remove duplicatas exatas para que o Dashboard não some os mesmos valores várias vezes
+      const uniqueMap = new Map();
+      rawRecords.forEach(r => {
+        // Chave única: data + linha + area + desc + prog + real
+        const key = `${r.date}|${r.line}|${r.area}|${r.desc}|${r.prog}|${r.real}`;
+        if (!uniqueMap.has(key)) {
+          uniqueMap.set(key, r);
+        }
+      });
+      
+      STATE.records = Array.from(uniqueMap.values());
     }
 
     // 3. Carregar Equipamentos

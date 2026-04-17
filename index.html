@@ -1,357 +1,391 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Boletim Diário de Medição | Trael Transformadores</title>
-  <meta name="description" content="Painel de controle de produção diária - Programado x Realizado - Trael Transformadores Elétricos LTDA" />
+  <meta name="description"
+    content="Painel de controle de produção diária - Programado x Realizado - Trael Transformadores Elétricos LTDA" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Rajdhani:wght@500;600;700&display=swap"
+    rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
 
-<!-- ==================== SIDEBAR NAV ==================== -->
-<aside class="sidebar" id="sidebar">
-  <div class="sidebar-logo">
-    <img src="logo.jpg" alt="TRAEL" class="sidebar-logo-img" />
-  </div>
-  <nav class="sidebar-nav">
-    <a href="#distribuicao" class="nav-item active" data-page="distribuicao" onclick="showPage('distribuicao')">
-      <span class="nav-icon">🏭</span>
-      <span class="nav-label">Distribuição (TPD)</span>
-    </a>
-    <a href="#forca-seco" class="nav-item" data-page="forca-seco" onclick="showPage('forca-seco')">
-      <span class="nav-icon">⚡</span>
-      <span class="nav-label">Média Força / SECO</span>
-    </a>
-    <a href="#upload" class="nav-item" data-page="upload" onclick="showPage('upload')">
-      <span class="nav-icon">📤</span>
-      <span class="nav-label">Upload / Entrada</span>
-    </a>
-    <a href="#settings" class="nav-item" data-page="settings" onclick="showPage('settings')">
-      <span class="nav-icon">⚙️</span>
-      <span class="nav-label">Configurações</span>
-    </a>
-  </nav>
-  <div class="sidebar-footer">
-    <div class="sidebar-version">v3.0.0</div>
-  </div>
-</aside>
+  <!-- ==================== SIDEBAR NAV ==================== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <img src="logo.jpg" alt="TRAEL" class="sidebar-logo-img" />
+    </div>
+    <nav class="sidebar-nav">
+      <a href="#distribuicao" class="nav-item active" data-page="distribuicao" onclick="showPage('distribuicao')">
+        <span class="nav-icon"></span>
+        <span class="nav-label">Distribuição (TPD)</span>
+      </a>
+      <a href="#forca-seco" class="nav-item" data-page="forca-seco" onclick="showPage('forca-seco')">
+        <span class="nav-icon"></span>
+        <span class="nav-label">Média Força / SECO</span>
+      </a>
+      <a href="#upload" class="nav-item" data-page="upload" onclick="showPage('upload')">
+        <span class="nav-icon"></span>
+        <span class="nav-label">Upload / Entrada</span>
+      </a>
+      <a href="#settings" class="nav-item" data-page="settings" onclick="showPage('settings')">
+        <span class="nav-icon"></span>
+        <span class="nav-label">Configurações</span>
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-version">v3.0.0</div>
+    </div>
+  </aside>
 
-<!-- ==================== MAIN CONTENT ==================== -->
-<main class="main-content">
+  <!-- ==================== MAIN CONTENT ==================== -->
+  <main class="main-content">
 
-  <!-- ========== PAGE: DISTRIBUIÇÃO (TPD) ========== -->
-  <div id="page-distribuicao" class="page active">
-    <header class="dashboard-header">
-      <div class="header-left">
-        <div class="company-badge"><img src="logo.jpg" alt="TRAEL" class="header-logo-img" /></div>
-        <div class="header-divider"></div>
-        <div class="header-title-block">
-          <h2 class="bulletin-title">DASHBOARD: DISTRIBUIÇÃO</h2>
-          <p class="bulletin-subtitle">PRODUTIVIDADE MÉDIA × TIPO DE NÚCLEO</p>
+    <!-- ========== PAGE: DISTRIBUIÇÃO (TPD) ========== -->
+    <div id="page-distribuicao" class="page active">
+      <header class="dashboard-header">
+        <div class="header-left">
+          <div class="company-badge"><img src="logo.jpg" alt="TRAEL" class="header-logo-img" /></div>
+          <div class="header-divider"></div>
+          <div class="header-title-block">
+            <h2 class="bulletin-title">DASHBOARD: DISTRIBUIÇÃO</h2>
+            <p class="bulletin-subtitle">PRODUTIVIDADE MÉDIA × TIPO DE NÚCLEO</p>
+          </div>
         </div>
-      </div>
-      <div class="header-right">
-        <div class="date-block">
-          <div class="date-today"><span class="date-label">HOJE</span><span class="date-value" id="distribDate">—</span></div>
-          <div class="date-month"><span class="date-label">MÊS</span><span class="date-value" id="distribMonth">—</span></div>
+        <div class="header-right">
+          <div class="date-block">
+            <div class="date-today"><span class="date-label">HOJE</span><span class="date-value"
+                id="distribDate">—</span></div>
+            <div class="date-month"><span class="date-label">MÊS</span><span class="date-value"
+                id="distribMonth">—</span></div>
+          </div>
+          <button class="theme-toggle" id="themeBtnDistrib" onclick="toggleTheme()" title="Trocar Tema">
+            <span id="themeIconDistrib">☀️</span>
+          </button>
         </div>
-        <button class="theme-toggle" id="themeBtnDistrib" onclick="toggleTheme()" title="Trocar Tema">
-          <span id="themeIconDistrib">☀️</span>
-        </button>
-      </div>
-    </header>
+      </header>
 
-    <section class="kpi-section kpi-section-distrib">
-      <div class="kpi-card core-enr">
-        <div class="kpi-body">
-          <div class="kpi-label">Média Diária: ENR</div>
-          <div class="kpi-value" id="kpiEnrMedia">—</div>
-          <div class="kpi-sub">unid / dia</div>
+      <section class="kpi-section kpi-section-distrib">
+        <div class="kpi-card core-enr">
+          <div class="kpi-body">
+            <div class="kpi-label">Média Diária: ENR</div>
+            <div class="kpi-value" id="kpiEnrMedia">—</div>
+            <div class="kpi-sub">unid / dia</div>
+          </div>
+          <div class="kpi-tag kpi-tag-green">ENR</div>
         </div>
-        <div class="kpi-tag kpi-tag-green">ENR</div>
-      </div>
-      <div class="kpi-card core-jc">
-        <div class="kpi-body">
-          <div class="kpi-label">Média Diária: JC-TRI</div>
-          <div class="kpi-value" id="kpiJcMedia">—</div>
-          <div class="kpi-sub">unid / dia</div>
+        <div class="kpi-card core-jc">
+          <div class="kpi-body">
+            <div class="kpi-label">Média Diária: JC-TRI</div>
+            <div class="kpi-value" id="kpiJcMedia">—</div>
+            <div class="kpi-sub">unid / dia</div>
+          </div>
+          <div class="kpi-tag kpi-tag-blue">JC-TRI</div>
         </div>
-        <div class="kpi-tag kpi-tag-blue">JC-TRI</div>
-      </div>
-      <div class="kpi-card core-emp">
-        <div class="kpi-body">
-          <div class="kpi-label">Média Diária: EMP</div>
-          <div class="kpi-value" id="kpiEmpMedia">—</div>
-          <div class="kpi-sub">unid / dia</div>
+        <div class="kpi-card core-emp">
+          <div class="kpi-body">
+            <div class="kpi-label">Média Diária: EMP</div>
+            <div class="kpi-value" id="kpiEmpMedia">—</div>
+            <div class="kpi-sub">unid / dia</div>
+          </div>
+          <div class="kpi-tag kpi-tag-dark">EMP</div>
         </div>
-        <div class="kpi-tag kpi-tag-dark">EMP</div>
-      </div>
-      <div class="kpi-card core-reject">
-        <div class="kpi-body">
-          <div class="kpi-label">REP - LAB</div>
-          <div class="kpi-value kpi-value-alert" id="kpiDistribReject">—</div>
-          <div class="kpi-sub">unidades reprovadas</div>
+        <div class="kpi-card core-reject">
+          <div class="kpi-body">
+            <div class="kpi-label">REP - LAB</div>
+            <div class="kpi-value kpi-value-alert" id="kpiDistribReject">—</div>
+            <div class="kpi-sub">unidades reprovadas</div>
+          </div>
+          <div class="kpi-tag kpi-tag-red">LAB</div>
         </div>
-        <div class="kpi-tag kpi-tag-red">LAB</div>
-      </div>
-      <div class="kpi-card core-meta">
-        <div class="kpi-body" style="padding-left:15px">
-          <div class="kpi-label">Meta Média Mensal</div>
-          <div class="kpi-value" id="kpiDistribMetaMensal">—</div>
-          <div class="kpi-sub">unid / dia</div>
+        <div class="kpi-card core-meta">
+          <div class="kpi-body" style="padding-left:15px">
+            <div class="kpi-label">Meta Média Mensal</div>
+            <div class="kpi-value" id="kpiDistribMetaMensal">—</div>
+            <div class="kpi-sub">unid / dia</div>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <div class="chart-grid-blocks" style="padding: 0 28px;">
-      <div class="chart-card">
-        <div class="bi-chart-main">
-          <h3 class="section-title">📊 PRODUÇÃO - QUANTIDADE (DISTRIBUIÇÃO)</h3>
-          <div class="chart-canvas-wrapper" style="height: 350px;"><canvas id="chartDistribQty"></canvas></div>
-        </div>
-        <div class="bi-table-wrapper" id="distribTableContainer" style="margin-top: 20px;"></div>
-        
-        <div class="upload-card" style="margin-top: 30px; border-top: 1px solid var(--border); padding-top: 20px;">
-          <h3 class="upload-section-title">🕒 Registros Recentes</h3>
-          <div class="table-filters" style="margin-bottom:15px; display:flex; gap:10px;">
-             <select class="form-input" id="filterLine" onchange="filterTable()" style="max-width:200px">
+      <div class="chart-grid-blocks" style="padding: 0 28px;">
+        <div class="chart-card">
+          <div class="bi-chart-main">
+            <h3 class="section-title"> PRODUÇÃO - QUANTIDADE (DISTRIBUIÇÃO)</h3>
+            <div class="chart-canvas-wrapper" style="height: 350px;"><canvas id="chartDistribQty"></canvas></div>
+          </div>
+          <div class="bi-table-wrapper" id="distribTableContainer" style="margin-top: 20px;"></div>
+
+          <div class="upload-card" style="margin-top: 30px; border-top: 1px solid var(--border); padding-top: 20px;">
+            <h3 class="upload-section-title"> Registros Recentes</h3>
+            <div class="table-filters" style="margin-bottom:15px; display:flex; gap:10px;">
+              <select class="form-input" id="filterLine" onchange="filterTable()" style="max-width:200px">
                 <option value="">Todas as Linhas</option>
                 <option value="TPM">TPM</option>
                 <option value="TPD">TPD</option>
                 <option value="TPS">TPS</option>
-             </select>
-             <button class="btn-export" onclick="exportData()">📥 Exportar CSV</button>
+              </select>
+              <button class="btn-export" onclick="exportData()"> Exportar CSV</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="bi-chart-pct">
+            <h3 class="section-title"> PERCENTUAL DO PLANEJADO (%)</h3>
+            <div class="chart-canvas-wrapper" style="height: 300px;"><canvas id="chartDistribPct"></canvas></div>
           </div>
         </div>
       </div>
 
-      <div class="chart-card">
-        <div class="bi-chart-pct">
-          <h3 class="section-title">📈 PERCENTUAL DO PLANEJADO (%)</h3>
-          <div class="chart-canvas-wrapper" style="height: 300px;"><canvas id="chartDistribPct"></canvas></div>
+      <section class="report-section">
+        <div class="report-card">
+          <div class="report-header">
+            <h3> RELATÓRIO EXECUTIVO - DISTRIBUIÇÃO</h3>
+            <button class="btn-export-report" onclick="exportReport('distrib')"> Exportar PDF</button>
+          </div>
+          <div class="report-body" id="reportDistrib"></div>
         </div>
-      </div>
+      </section>
+
+      <footer class="dashboard-footer">
+        <span>© 2026 TRAEL Transformadores — Distribuição</span>
+        <span id="footerTimeDistrib">—</span>
+      </footer>
     </div>
 
-    <section class="report-section">
-       <div class="report-card">
-         <div class="report-header">
-            <h3>📑 RELATÓRIO EXECUTIVO - DISTRIBUIÇÃO</h3>
-            <button class="btn-export-report" onclick="exportReport('distrib')">📥 Exportar PDF</button>
-         </div>
-         <div class="report-body" id="reportDistrib"></div>
-       </div>
-    </section>
+    <!-- ========== PAGE: MÉDIA FORÇA / SECO ========== -->
+    <div id="page-forca-seco" class="page">
+      <header class="dashboard-header">
+        <div class="header-left">
+          <div class="company-badge"><img src="logo.jpg" alt="TRAEL" class="header-logo-img" /></div>
+          <div class="header-divider"></div>
+          <div class="header-title-block">
+            <h2 class="bulletin-title">DASHBOARD: MÉDIA FORÇA / SECO</h2>
+            <p class="bulletin-subtitle">PRODUÇÃO DIÁRIA × REALIZADO</p>
+          </div>
+        </div>
+        <div class="header-right">
+          <div class="date-block">
+            <div class="date-today"><span class="date-label">HOJE</span><span class="date-value" id="forcaDate">—</span>
+            </div>
+            <div class="date-month"><span class="date-label">MÊS</span><span class="date-value" id="forcaMonth">—</span>
+            </div>
+          </div>
+          <button class="theme-toggle" id="themeBtnForca" onclick="toggleTheme()" title="Trocar Tema">
+            <span id="themeIconForca">☀️</span>
+          </button>
+        </div>
+      </header>
 
-    <footer class="dashboard-footer">
-      <span>© 2026 TRAEL Transformadores — Distribuição</span>
-      <span id="footerTimeDistrib">—</span>
-    </footer>
-  </div>
+      <section class="kpi-section">
+        <div class="kpi-card core-total">
+          <div class="kpi-body" style="padding-left:15px">
+            <div class="kpi-label">Meta Média Força / SECO</div>
+            <div class="kpi-value" id="kpiForcaMeta">—</div>
+            <div class="kpi-sub">unidades / mês</div>
+          </div>
+        </div>
+        <div class="kpi-card core-total" style="border-left-color: var(--green-500)">
+          <div class="kpi-body" style="padding-left:15px">
+            <div class="kpi-label">Realizado Acumulado</div>
+            <div class="kpi-value kpi-value-green" id="kpiForcaReal">—</div>
+            <div class="kpi-sub">unidades produzidas</div>
+          </div>
+        </div>
+        <div class="kpi-card core-total" style="border-left-color: var(--warning)">
+          <div class="kpi-body" style="padding-left:15px">
+            <div class="kpi-label">Saldo do Mês</div>
+            <div class="kpi-value kpi-value-alert" id="kpiForcaSaldo">—</div>
+            <div class="kpi-sub">unidades restantes</div>
+          </div>
+        </div>
+        <div class="kpi-card kpi-card-gauge core-total" style="border-left-color: var(--accent)">
+          <div class="kpi-label" style="font-size:10px">% Atingimento</div>
+          <div class="gauge-container">
+            <canvas id="gaugeForca" width="100" height="60"></canvas>
+            <div class="gauge-center"><span class="gauge-pct" id="forcaPct">0%</span></div>
+          </div>
+        </div>
+      </section>
 
-  <!-- ========== PAGE: MÉDIA FORÇA / SECO ========== -->
-  <div id="page-forca-seco" class="page">
-    <header class="dashboard-header">
-      <div class="header-left">
-        <div class="company-badge"><img src="logo.jpg" alt="TRAEL" class="header-logo-img" /></div>
-        <div class="header-divider"></div>
-        <div class="header-title-block">
-          <h2 class="bulletin-title">DASHBOARD: MÉDIA FORÇA / SECO</h2>
-          <p class="bulletin-subtitle">PRODUÇÃO DIÁRIA × REALIZADO</p>
+      <section class="lines-section">
+        <div class="section-header">
+          <h3 class="section-title">📋 SEGMENTAÇÃO POR LINHA (REGRA 3)</h3>
         </div>
-      </div>
-      <div class="header-right">
-        <div class="date-block">
-          <div class="date-today"><span class="date-label">HOJE</span><span class="date-value" id="forcaDate">—</span></div>
-          <div class="date-month"><span class="date-label">MÊS</span><span class="date-value" id="forcaMonth">—</span></div>
+        <div class="lines-grid" id="forcaLinesGrid">
+          <!-- Populated by JS -->
         </div>
-        <button class="theme-toggle" id="themeBtnForca" onclick="toggleTheme()" title="Trocar Tema">
-          <span id="themeIconForca">☀️</span>
-        </button>
-      </div>
-    </header>
+      </section>
 
-    <section class="kpi-section">
-      <div class="kpi-card core-total">
-        <div class="kpi-body" style="padding-left:15px">
-          <div class="kpi-label">Meta Média Força / SECO</div>
-          <div class="kpi-value" id="kpiForcaMeta">—</div>
-          <div class="kpi-sub">unidades / mês</div>
-        </div>
-      </div>
-      <div class="kpi-card core-total" style="border-left-color: var(--green-500)">
-        <div class="kpi-body" style="padding-left:15px">
-          <div class="kpi-label">Realizado Acumulado</div>
-          <div class="kpi-value kpi-value-green" id="kpiForcaReal">—</div>
-          <div class="kpi-sub">unidades produzidas</div>
-        </div>
-      </div>
-      <div class="kpi-card core-total" style="border-left-color: var(--warning)">
-        <div class="kpi-body" style="padding-left:15px">
-          <div class="kpi-label">Saldo do Mês</div>
-          <div class="kpi-value kpi-value-alert" id="kpiForcaSaldo">—</div>
-          <div class="kpi-sub">unidades restantes</div>
-        </div>
-      </div>
-      <div class="kpi-card kpi-card-gauge core-total" style="border-left-color: var(--accent)">
-        <div class="kpi-label" style="font-size:10px">% Atingimento</div>
-        <div class="gauge-container">
-          <canvas id="gaugeForca" width="100" height="60"></canvas>
-          <div class="gauge-center"><span class="gauge-pct" id="forcaPct">0%</span></div>
-        </div>
-      </div>
-    </section>
-
-    <section class="lines-section">
-      <div class="section-header"><h3 class="section-title">📋 SEGMENTAÇÃO POR LINHA (REGRA 3)</h3></div>
-      <div class="lines-grid" id="forcaLinesGrid">
-         <!-- Populated by JS -->
-      </div>
-    </section>
-
-    <section class="chart-section bi-section">
-      <div class="bi-container">
-        <div class="forca-charts-grid" style="padding: 20px;">
+      <section class="chart-section bi-section">
+        <div class="bi-container">
+          <div class="forca-charts-grid" style="padding: 20px;">
             <div class="bi-chart-card" style="border:none; background:transparent;">
-                <div class="chart-header" style="padding-top:0;"><h3>📈 Produção Diária: TPM (Média Força)</h3></div>
-                <div class="chart-body" style="height:250px"><canvas id="chartTPM"></canvas></div>
+              <div class="chart-header" style="padding-top:0;">
+                <h3> Produção Diária: TPM (Média Força)</h3>
+              </div>
+              <div class="chart-body" style="height:250px"><canvas id="chartTPM"></canvas></div>
             </div>
             <div class="bi-chart-card" style="border:none; background:transparent;">
-                <div class="chart-header" style="padding-top:0;"><h3>📈 Produção Diária: TPS (Seco)</h3></div>
-                <div class="chart-body" style="height:250px"><canvas id="chartTPS"></canvas></div>
+              <div class="chart-header" style="padding-top:0;">
+                <h3> Produção Diária: TPS (Seco)</h3>
+              </div>
+              <div class="chart-body" style="height:250px"><canvas id="chartTPS"></canvas></div>
             </div>
-        </div>
-      </div>
-    </section>
-
-
-
-    <footer class="dashboard-footer">
-      <span>© 2026 TRAEL Transformadores — Média Força / SECO</span>
-      <span id="footerTimeForca">—</span>
-    </footer>
-  </div>
-
-  <!-- ========== PAGE: UPLOAD ========== -->
-  <div id="page-upload" class="page">
-    <div class="page-inner">
-      <div class="page-title-row">
-        <h2 class="page-main-title">📤 ENTRADA DE DADOS E IMPORTAÇÃO</h2>
-        <p class="page-desc">Selecione a área para importar planilhas ou inserir dados manuais.</p>
-      </div>
-
-      <div class="upload-tabs">
-        <button class="upload-tab-btn active" onclick="switchUploadTab('distrib')" id="tabBtnDistrib">Distribuição (TPD)</button>
-        <button class="upload-tab-btn" onclick="switchUploadTab('forca')" id="tabBtnForca">Média Força / SECO</button>
-      </div>
-
-      <div id="uploadTabDistrib" class="upload-tab-content active">
-        <div class="upload-card">
-          <h3 class="upload-section-title">📁 Importar Planilha: DISTRIBUIÇÃO</h3>
-          <div class="drop-zone" id="dropZoneDistrib" onclick="document.getElementById('fileInputDistrib').click()">
-            <div class="drop-icon">📂</div>
-            <p class="drop-text">Arraste a planilha de Distribuição aqui</p>
-            <input type="file" id="fileInputDistrib" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFileUpload(event, 'distrib')" />
           </div>
-          <div id="uploadStatusDistrib" class="upload-status" style="display:none"></div>
         </div>
-        <div class="upload-card">
-          <h3 class="upload-section-title">✏️ Registro Manual: DISTRIBUIÇÃO</h3>
-          <div id="manualEntriesDistrib"></div>
-          <div class="manual-actions">
-            <button class="btn-add-entry" onclick="addManualEntry('distrib')">+ Adicionar Linha</button>
-            <button class="btn-save-entries" onclick="saveManualEntries('distrib')">💾 Salvar em Distribuição</button>
-          </div>
-          <div id="manualStatusDistrib" class="upload-status" style="display:none"></div>
-        </div>
-      </div>
+      </section>
 
-      <div id="uploadTabForca" class="upload-tab-content">
-        <div class="upload-card">
-          <h3 class="upload-section-title">📁 Importar Planilha: MÉDIA FORÇA / SECO</h3>
-          <div class="drop-zone" id="dropZoneForca" onclick="document.getElementById('fileInputForca').click()">
-            <div class="drop-icon">📂</div>
-            <p class="drop-text">Arraste a planilha de Força/Seco aqui</p>
-            <input type="file" id="fileInputForca" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFileUpload(event, 'forca')" />
-          </div>
-          <div id="uploadStatusForca" class="upload-status" style="display:none"></div>
-        </div>
-        <div class="upload-card">
-          <h3 class="upload-section-title">✏️ Registro Manual: MÉDIA FORÇA / SECO</h3>
-          <div id="manualEntriesForca"></div>
-          <div class="manual-actions">
-            <button class="btn-add-entry" onclick="addManualEntry('forca')">+ Adicionar Linha</button>
-            <button class="btn-save-entries" onclick="saveManualEntries('forca')">💾 Salvar em Força/Seco</button>
-          </div>
-          <div id="manualStatusForca" class="upload-status" style="display:none"></div>
-        </div>
-      </div>
 
-      <div class="upload-card">
-        <h3 class="upload-section-title">🕒 Registros Recentes</h3>
-        <div class="table-filters" style="margin-bottom:15px; display:flex; gap:10px;">
-           <select class="form-input" id="filterLine" onchange="filterTable()" style="max-width:200px">
+
+
+      <footer class="dashboard-footer">
+        <span>© 2026 TRAEL Transformadores — Média Força / SECO</span>
+        <span id="footerTimeForca">—</span>
+      </footer>
+    </div>
+
+    <!-- ========== PAGE: UPLOAD ========== -->
+    <div id="page-upload" class="page">
+      <div class="page-inner">
+        <div class="page-title-row">
+          <h2 class="page-main-title">📤 ENTRADA DE DADOS E IMPORTAÇÃO</h2>
+          <p class="page-desc">Selecione a área para importar planilhas ou inserir dados manuais.</p>
+        </div>
+
+        <div class="upload-tabs">
+          <button class="upload-tab-btn active" onclick="switchUploadTab('distrib')" id="tabBtnDistrib">Distribuição
+            (TPD)</button>
+          <button class="upload-tab-btn" onclick="switchUploadTab('forca')" id="tabBtnForca">Média Força / SECO</button>
+        </div>
+
+        <div id="uploadTabDistrib" class="upload-tab-content active">
+          <div class="upload-card">
+            <h3 class="upload-section-title"> Importar Planilha: DISTRIBUIÇÃO</h3>
+            <div class="drop-zone" id="dropZoneDistrib" onclick="document.getElementById('fileInputDistrib').click()">
+              <div class="drop-icon"></div>
+              <p class="drop-text">Arraste a planilha de Distribuição aqui</p>
+              <input type="file" id="fileInputDistrib" accept=".xlsx,.xls,.csv" style="display:none"
+                onchange="handleFileUpload(event, 'distrib')" />
+            </div>
+            <div id="uploadStatusDistrib" class="upload-status" style="display:none"></div>
+          </div>
+          <div class="upload-card">
+            <h3 class="upload-section-title"> Registro Manual: DISTRIBUIÇÃO</h3>
+            <div id="manualEntriesDistrib"></div>
+            <div class="manual-actions">
+              <button class="btn-add-entry" onclick="addManualEntry('distrib')">+ Adicionar Linha</button>
+              <button class="btn-save-entries" onclick="saveManualEntries('distrib')">💾 Salvar em Distribuição</button>
+            </div>
+            <div id="manualStatusDistrib" class="upload-status" style="display:none"></div>
+          </div>
+        </div>
+
+        <div id="uploadTabForca" class="upload-tab-content">
+          <div class="upload-card">
+            <h3 class="upload-section-title"> Importar Planilha: MÉDIA FORÇA / SECO</h3>
+            <div class="drop-zone" id="dropZoneForca" onclick="document.getElementById('fileInputForca').click()">
+              <div class="drop-icon"></div>
+              <p class="drop-text">Arraste a planilha de Força/Seco aqui</p>
+              <input type="file" id="fileInputForca" accept=".xlsx,.xls,.csv" style="display:none"
+                onchange="handleFileUpload(event, 'forca')" />
+            </div>
+            <div id="uploadStatusForca" class="upload-status" style="display:none"></div>
+          </div>
+          <div class="upload-card">
+            <h3 class="upload-section-title"> Registro Manual: MÉDIA FORÇA / SECO</h3>
+            <div id="manualEntriesForca"></div>
+            <div class="manual-actions">
+              <button class="btn-add-entry" onclick="addManualEntry('forca')">+ Adicionar Linha</button>
+              <button class="btn-save-entries" onclick="saveManualEntries('forca')"> Salvar em Força/Seco</button>
+            </div>
+            <div id="manualStatusForca" class="upload-status" style="display:none"></div>
+          </div>
+        </div>
+
+        <div class="upload-card">
+          <h3 class="upload-section-title"> Registros Recentes</h3>
+          <div class="table-filters" style="margin-bottom:15px; display:flex; gap:10px;">
+            <select class="form-input" id="filterLine" onchange="filterTable()" style="max-width:200px">
               <option value="">Todas as Linhas</option>
               <option value="TPM">TPM</option>
               <option value="TPD">TPD</option>
               <option value="TPS">TPS</option>
-           </select>
-           <button class="btn-export" onclick="exportData()">📥 Exportar CSV</button>
-        </div>
-        <div class="table-container">
-          <table class="data-table">
-            <thead>
-              <tr><th>Data</th><th>Linha</th><th>Prog.</th><th>Real.</th><th>Descrição</th><th>Origem</th><th>Ação</th></tr>
-            </thead>
-            <tbody id="dataTableBody"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ========== PAGE: SETTINGS ========== -->
-  <div id="page-settings" class="page">
-    <div class="page-inner">
-      <div class="page-title-row">
-        <h2 class="page-main-title">⚙️ CONFIGURAÇÕES</h2>
-      </div>
-      <div class="settings-grid">
-        <div class="settings-card">
-          <h3 class="settings-card-title">🎯 Metas Mensais</h3>
-          <div class="settings-form">
-            <div class="form-group"><label>Mês</label><input type="month" class="form-input" id="configMonth" /></div>
-            <div class="form-group"><label>Meta Total Média Força</label><input type="number" class="form-input" id="configMetaTotal" /></div>
-            <div class="form-group"><label>Meta Média TPM</label><input type="number" class="form-input" id="configMetaTPM" /></div>
-            <div class="form-group"><label>Meta Média TPD (Mensal)</label><input type="number" class="form-input" id="configMetaDistribMensal" /></div>
-            <div class="form-group"><label>Meta Média TPS</label><input type="number" class="form-input" id="configMetaTPS" /></div>
+            </select>
+            <button class="btn-export" onclick="exportData()">📥 Exportar CSV</button>
           </div>
-        </div>
-        <div class="settings-card">
-          <h3 class="settings-card-title">📅 Calendário</h3>
-          <div class="settings-form">
-            <div class="form-group"><label>Dias Úteis</label><input type="number" class="form-input" id="configDiasUteis" /></div>
-            <div class="form-group"><label>Dias Trabalhados</label><input type="number" class="form-input" id="configDiasTrabalhados" /></div>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Linha</th>
+                  <th>Prog.</th>
+                  <th>Real.</th>
+                  <th>Descrição</th>
+                  <th>Origem</th>
+                  <th>Ação</th>
+                </tr>
+              </thead>
+              <tbody id="dataTableBody"></tbody>
+            </table>
           </div>
         </div>
       </div>
-      <div class="settings-actions">
-        <button class="btn-save-settings" onclick="saveSettings()">💾 Salvar</button>
-      </div>
-      <div id="settingsStatus" class="upload-status" style="display:none"></div>
     </div>
-  </div>
 
-</main>
+    <!-- ========== PAGE: SETTINGS ========== -->
+    <div id="page-settings" class="page">
+      <div class="page-inner">
+        <div class="page-title-row">
+          <h2 class="page-main-title"> CONFIGURAÇÕES</h2>
+        </div>
+        <div class="settings-grid">
+          <div class="settings-card">
+            <h3 class="settings-card-title"> Metas Mensais</h3>
+            <div class="settings-form">
+              <div class="form-group"><label>Mês</label><input type="month" class="form-input" id="configMonth" /></div>
+              <div class="form-group"><label>Meta Total Média Força</label><input type="number" class="form-input"
+                  id="configMetaTotal" /></div>
+              <div class="form-group"><label>Meta Média TPM</label><input type="number" class="form-input"
+                  id="configMetaTPM" /></div>
+              <div class="form-group"><label>Meta Média TPD (Mensal)</label><input type="number" class="form-input"
+                  id="configMetaDistribMensal" /></div>
+              <div class="form-group"><label>Meta Média TPS</label><input type="number" class="form-input"
+                  id="configMetaTPS" /></div>
+            </div>
+          </div>
+          <div class="settings-card">
+            <h3 class="settings-card-title"> Calendário</h3>
+            <div class="settings-form">
+              <div class="form-group"><label>Dias Úteis</label><input type="number" class="form-input"
+                  id="configDiasUteis" /></div>
+              <div class="form-group"><label>Dias Trabalhados</label><input type="number" class="form-input"
+                  id="configDiasTrabalhados" /></div>
+            </div>
+          </div>
+        </div>
+        <div class="settings-actions">
+          <button class="btn-save-settings" onclick="saveSettings()"> Salvar</button>
+        </div>
+        <div id="settingsStatus" class="upload-status" style="display:none"></div>
+      </div>
+    </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  </main>
 
-<script src="app.js?v=4.2.3"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script src="app.js?v=4.2.3"></script>
 </body>
+
 </html>
