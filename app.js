@@ -402,9 +402,9 @@ function computeForcaMetrics() {
     const dateKey = `${monthPrefix}-${String(d).padStart(2, '0')}`;
     const dayRecs = monthRecords.filter(r => r.date === dateKey);
     
-    const tpm = dayRecs.filter(r => r.line === 'TPM').reduce((s,r) => s+(Number(r.real)||0), 0);
-    const tps = dayRecs.filter(r => r.line === 'TPS').reduce((s,r) => s+(Number(r.real)||0), 0);
-    const tpd = dayRecs.filter(r => r.line === 'TPD').reduce((s,r) => s+(Number(r.real)||0), 0);
+    const tpm = dayRecs.filter(r => String(r.line).startsWith('TPM')).reduce((s,r) => s+(Number(r.real)||0), 0);
+    const tps = dayRecs.filter(r => String(r.line).startsWith('TPS')).reduce((s,r) => s+(Number(r.real)||0), 0);
+    const tpd = dayRecs.filter(r => String(r.line).startsWith('TPD')).reduce((s,r) => s+(Number(r.real)||0), 0);
     
     daily.TPM.push(tpm); daily.TPS.push(tps); daily.TPD.push(tpd);
     daily.Total.push(tpm + tps + tpd);
@@ -972,11 +972,7 @@ function addManualEntry(area) {
     <div class="entry-fields">
       <div class="form-group"><label>Data</label><input type="date" class="form-input entry-date" value="${todayDateStr()}" /></div>
       <div class="form-group"><label>Linha</label>
-        <select class="form-input entry-line">
-          <option value="TPD" ${area==='distrib'?'selected':''}>TPD – Distribuição</option>
-          <option value="TPM" ${area==='forca'?'selected':''}>TPM – Média Força</option>
-          <option value="TPS">TPS – Seco</option>
-        </select>
+        <input type="text" class="form-input entry-line" list="line-options" placeholder="Ex: TPD-435120" value="${area==='distrib'?'TPD':'TPM'}" />
       </div>
       <div class="form-group"><label>Prog.</label><input type="number" class="form-input entry-prog" placeholder="0" /></div>
       <div class="form-group"><label>Real.</label><input type="number" class="form-input entry-real" placeholder="0" /></div>
@@ -1303,7 +1299,8 @@ function renderDataTable() {
   tbody.innerHTML = records.map(r => {
     const areaLabel = r.area === 'distrib' ? '🏭 DIST' : '⚡ FORÇA';
     const coreLabel = r.coreType ? ` [${r.coreType}]` : '';
-    const lineBadgeCls = r.line === 'TPM' ? 'line-badge-tpm' : r.line === 'TPD' ? 'line-badge-tpd' : 'line-badge-tps';
+    const lineStr = String(r.line);
+    const lineBadgeCls = lineStr.startsWith('TPM') ? 'line-badge-tpm' : lineStr.startsWith('TPD') ? 'line-badge-tpd' : 'line-badge-tps';
     
     return `<tr>
       <td>${r.date}</td>
