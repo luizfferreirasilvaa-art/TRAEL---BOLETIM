@@ -509,14 +509,14 @@ function renderDashboardForca() {
       <div class="line-card">
          <div class="line-header"><div class="line-badge line-badge-tpm">TPM</div><span class="line-name">Média Força</span></div>
          <div class="line-kpis">
-           <div class="line-kpi"><span class="lk-label">Prog.</span><span class="lk-val">${cfg.metaTPM}</span></div>
+           <div class="line-kpi"><span class="lk-label">Meta</span><span class="lk-val">${cfg.metaTPM}</span></div>
            <div class="line-kpi"><span class="lk-label">Real.</span><span class="lk-val lk-green">${m.totals.TPM}</span></div>
          </div>
       </div>
       <div class="line-card">
          <div class="line-header"><div class="line-badge line-badge-tps">TPS</div><span class="line-name">Seco</span></div>
          <div class="line-kpis">
-           <div class="line-kpi"><span class="lk-label">Prog.</span><span class="lk-val">${cfg.metaTPS}</span></div>
+           <div class="line-kpi"><span class="lk-label">Meta</span><span class="lk-val">${cfg.metaTPS}</span></div>
            <div class="line-kpi"><span class="lk-label">Real.</span><span class="lk-val lk-green">${m.totals.TPS}</span></div>
          </div>
       </div>
@@ -974,7 +974,7 @@ function addManualEntry(area) {
       <div class="form-group"><label>Linha</label>
         <input type="text" class="form-input entry-line" list="line-options" placeholder="Ex: TPD-435120" value="${area==='distrib'?'TPD':'TPM'}" />
       </div>
-      <div class="form-group"><label>Prog.</label><input type="number" class="form-input entry-prog" placeholder="0" /></div>
+      <div class="form-group"><label>Meta</label><input type="number" class="form-input entry-prog" placeholder="0" /></div>
       <div class="form-group"><label>Real.</label><input type="number" class="form-input entry-real" placeholder="0" /></div>
       <div class="form-group"><label>OS / Desc.</label><input type="text" class="form-input entry-desc" placeholder="OS..." /></div>
     </div>
@@ -1353,7 +1353,7 @@ function exportReport(area) {
 function exportData() {
   const currentMonth = STATE.config.month;
   const records = STATE.records.filter(r => r.date && r.date.startsWith(currentMonth));
-  const headers = ['Data', 'Area', 'Linha', 'Núcleo', 'Prog', 'Real', 'Desc'];
+  const headers = ['Data', 'Area', 'Linha', 'Núcleo', 'Meta', 'Real', 'Desc'];
   const rows = records.map(r => [r.date, r.area, r.line, r.coreType||'', r.prog, r.real, r.desc]);
   const csv = [headers, ...rows].map(r => r.join(';')).join('\n');
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
