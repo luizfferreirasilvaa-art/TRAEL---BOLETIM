@@ -20,9 +20,12 @@
   <!-- ==================== TELA DE LOGIN ==================== -->
   <div id="login-overlay" class="login-overlay active">
     <div class="login-card">
-      <div class="login-logo">
-        <h1 style="color:white; font-family:'Rajdhani', sans-serif;">SOMA <span style="color:var(--green-500)">MODULAR</span></h1>
-        <p style="color:var(--text-muted); font-size:12px; margin-top:5px;">Acesso Restrito</p>
+      <div class="login-logo-container">
+        <img src="logo.jpg" alt="TRAEL" class="login-logo-img" />
+        <div class="login-title-group">
+          <h1 class="login-main-title">BOLETIM <span class="highlight">DIÁRIO</span></h1>
+          <p class="login-subtitle">MEDIÇÃO E PRODUTIVIDADE</p>
+        </div>
       </div>
       <form id="loginForm" onsubmit="handleLogin(event)">
         <div class="form-group">
