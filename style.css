@@ -36,11 +36,17 @@
   --info: #42A5F5;
 
   /* Barra Lateral */
-  --sidebar-w: 220px;
+  --sidebar-w: 240px;
+  --sidebar-bg-dark: #0B0E14;
 
   /* Animação */
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
-  --duration: 0.25s;
+  --duration: 0.3s;
+  
+  /* Sombras */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.15);
 }
 
 /* --- SOBREPOSIÇÕES DO TEMA CLARO --- */
@@ -149,7 +155,7 @@ body {
 .sidebar {
   width: var(--sidebar-w);
   min-height: 100vh;
-  background: var(--bg-dark);
+  background: var(--sidebar-bg-dark);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -188,25 +194,25 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 11px 16px;
+  padding: 14px 20px;
   text-decoration: none;
   color: var(--text-secondary);
   border-radius: 0;
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 500;
   transition: all var(--duration) var(--ease);
-  border-left: 3px solid transparent;
+  border-left: 4px solid transparent;
   cursor: pointer;
 }
 
 .nav-item:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .nav-item.active {
   color: var(--green-400);
-  background: rgba(76, 175, 80, 0.1);
+  background: rgba(76, 175, 80, 0.08);
   border-left-color: var(--green-500);
 }
 
@@ -502,17 +508,18 @@ body.light-theme .theme-toggle {
 }
 
 .kpi-label {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-secondary);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  margin-bottom: 4px;
 }
 
 .kpi-value {
   font-family: 'Rajdhani', sans-serif;
-  font-size: 36px;
-  font-weight: 700;
+  font-size: 24px; /* Sugestão do usuário: 24px negrito */
+  font-weight: 800;
   color: var(--text-primary);
   line-height: 1.1;
 }
@@ -1423,16 +1430,21 @@ body.role-visualizador .btn-export-report {
 .upload-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 20px;
+  border-radius: 16px;
+  padding: 32px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-md);
 }
 
 .upload-section-title {
   font-family: 'Rajdhani', sans-serif;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 14px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .upload-hint-text {
@@ -1570,13 +1582,13 @@ body.role-visualizador .btn-export-report {
 .form-input {
   background: var(--bg-input);
   border: 1px solid var(--border);
-  border-radius: 7px;
+  border-radius: 8px;
   color: var(--text-primary);
   font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  padding: 8px 10px;
+  font-size: 14px;
+  padding: 12px 16px; /* Aumentado padding interno */
   width: 100%;
-  transition: border-color var(--duration);
+  transition: all var(--duration);
   appearance: none;
 }
 
@@ -1590,14 +1602,131 @@ body.role-visualizador .btn-export-report {
   background: var(--bg-dark);
 }
 
-.btn-add-entry {
-  background: rgba(66, 165, 245, 0.1);
-  border: 1px dashed rgba(66, 165, 245, 0.4);
-  color: #42A5F5;
-  border-radius: 8px;
-  padding: 10px 18px;
-  font-size: 13px;
-  font-weight: 600;
+.btn-save-entries,
+.btn-save-settings {
+  background: linear-gradient(135deg, var(--green-700) 0%, var(--green-500) 100%);
+  color: white;
+  border: none;
+  padding: 14px 28px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all var(--duration);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.25);
+}
+
+.btn-save-entries:hover,
+.btn-save-settings:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(76, 175, 80, 0.35);
+  filter: brightness(1.1);
+}
+
+.btn-save-entries:disabled,
+.btn-save-settings:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Spinner de Carregamento */
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Toasts de Notificação */
+.toast-container {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.toast {
+  background: var(--bg-card);
+  border-left: 4px solid var(--accent);
+  color: var(--text-primary);
+  padding: 16px 24px;
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 280px;
+  animation: toastIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: all 0.3s ease;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(50px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.toast.success { border-left-color: var(--success); }
+.toast.error { border-left-color: var(--danger); }
+
+/* Animação de Atualização na Tabela */
+@keyframes flashUpdate {
+  0% { background-color: rgba(76, 175, 80, 0.3); }
+  100% { background-color: transparent; }
+}
+
+.row-update-flash {
+  animation: flashUpdate 1.5s ease-out;
+}
+
+/* Gráficos com Área (Area Chart) */
+.chart-canvas-wrapper {
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.1));
+}
+
+/* Sincronização e Header */
+.sync-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+}
+
+.sync-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 8px var(--success);
+}
+
+/* Input de Data Compacto */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(0.8);
+}
+
+.settings-card {
+  max-width: 800px; /* Limite de largura nas configurações */
+}
   cursor: pointer;
   width: 100%;
   transition: all var(--duration);
@@ -2222,4 +2351,13 @@ body.role-visualizador .btn-export-report {
   .entry-fields {
     grid-template-columns: 1fr;
   }
+}
+
+.sync-dot.sync-blink {
+  animation: syncBlink 1s infinite alternate;
+}
+
+@keyframes syncBlink {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0.5; transform: scale(0.8); }
 }

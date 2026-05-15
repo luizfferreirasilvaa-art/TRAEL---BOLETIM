@@ -17,6 +17,19 @@ const USERS = {
 };
 
 let currentUser = null;
+let isSyncing = false;
+
+function updateSyncStatus(syncing) {
+  isSyncing = syncing;
+  const dots = document.querySelectorAll('.sync-dot');
+  const labels = document.querySelectorAll('.sync-status span');
+  dots.forEach(dot => {
+    dot.style.background = syncing ? 'var(--warning)' : 'var(--success)';
+    dot.style.boxShadow = syncing ? '0 0 8px var(--warning)' : '0 0 8px var(--success)';
+    if (syncing) dot.classList.add('sync-blink'); else dot.classList.remove('sync-blink');
+  });
+  labels.forEach(label => label.textContent = syncing ? 'Sincronizando...' : 'Sincronizado');
+}
 
 async function checkSession() {
   const sessionUser = localStorage.getItem('soma_session');
@@ -160,10 +173,13 @@ async function saveRecordsToDB(records) {
     if (error) throw error;
   } catch (err) {
     console.error('Erro ao salvar registros:', err);
+  } finally {
+    updateSyncStatus(false);
   }
 }
 
 async function loadDataFromDB() {
+  updateSyncStatus(true);
   try {
     const currentMonth = STATE.config.month;
     const year = parseInt(currentMonth.split('-')[0]);
@@ -239,6 +255,8 @@ async function loadDataFromDB() {
   } catch (err) {
     console.warn('Erro ao carregar do Supabase, usando localStorage/amostra', err);
     loadFromStorage();
+  } finally {
+    updateSyncStatus(false);
   }
 }
 
@@ -284,6 +302,11 @@ function showPage(page) {
   } catch (err) {
     console.warn(`Erro ao renderizar página ${page}:`, err);
   }
+}
+
+function renderDashboard() {
+  const activePage = document.querySelector('.page.active')?.id?.replace('page-', '');
+  if (activePage) showPage(activePage);
 }
 
 function switchUploadTab(area) {
@@ -475,12 +498,12 @@ function renderDashboardDistrib() {
   const cfg = STATE.config;
 
   // Header & KPIs
-  setText('kpiEnrMedia', m.medias.ENR.toFixed(1));
-  setText('kpiJcMedia',  m.medias.JC.toFixed(1));
-  setText('kpiEmpMedia', m.medias.EMP.toFixed(1));
-  setText('kpiTotalMedia', m.medias.Total.toFixed(1));
-  setText('kpiDistribReject', m.totals.LAB);
-  setText('kpiDistribMetaMensal', cfg.metaDistribMensal);
+  animateValue('kpiEnrMedia', 0, m.medias.ENR, 1);
+  animateValue('kpiJcMedia',  0, m.medias.JC, 1);
+  animateValue('kpiEmpMedia', 0, m.medias.EMP, 1);
+  animateValue('kpiTotalMedia', 0, m.medias.Total, 1);
+  animateValue('kpiDistribReject', 0, m.totals.LAB, 0);
+  animateValue('kpiDistribMetaMensal', 0, cfg.metaDistribMensal, 0);
 
   // Charts
   renderDistribCharts(m);
@@ -498,7 +521,10 @@ function renderDashboardForca() {
   const m = computeForcaMetrics();
   const cfg = STATE.config;
 
-  setText('forcaPct', Math.round(m.pct) + '%');
+  animateValue('forcaPct', 0, Math.round(m.pct), 0, '%');
+  animateValue('kpiForcaMeta', 0, cfg.metaTotal, 0);
+  animateValue('kpiForcaReal', 0, m.totals.Total, 0);
+  animateValue('kpiForcaSaldo', 0, Math.max(0, cfg.metaTotal - m.totals.Total), 0);
 
   renderForcaCharts(m);
   
@@ -530,6 +556,42 @@ function renderDashboardForca() {
 function setText(id, val) {
   const el = document.getElementById(id);
   if (el) el.textContent = val;
+}
+
+function animateValue(id, start, end, decimals = 0, suffix = '') {
+  const obj = document.getElementById(id);
+  if (!obj) return;
+  
+  let startTimestamp = null;
+  const duration = 1000;
+  const step = (timestamp) => {
+    if (!startTimestamp) startTimestamp = timestamp;
+    const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+    const current = progress * (end - start) + start;
+    obj.innerHTML = current.toFixed(decimals) + suffix;
+    if (progress < 1) {
+      window.requestAnimationFrame(step);
+    }
+  };
+  window.requestAnimationFrame(step);
+}
+
+function showToast(message, type = 'success') {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+  
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  const icon = type === 'success' ? '✅' : '🚨';
+  toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
+  
+  container.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(50px)';
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
 }
 
 // ====================== TABELA DE GRADE BI ======================
@@ -707,6 +769,10 @@ function renderForcaCharts(m) {
   const labels = Array.from({length: 31}, (_, i) => i + 1);
 
   // TPM Chart
+  const gradTPM = ctxTPM.getContext('2d').createLinearGradient(0, 0, 0, 300);
+  gradTPM.addColorStop(0, 'rgba(76, 175, 80, 0.4)');
+  gradTPM.addColorStop(1, 'rgba(76, 175, 80, 0.0)');
+
   STATE.charts.forcaTPM = new Chart(ctxTPM, {
     type: 'line',
     data: {
@@ -716,9 +782,12 @@ function renderForcaCharts(m) {
           label: 'Realizado TPM', 
           data: m.daily.TPM, 
           borderColor: '#4CAF50', 
-          backgroundColor: 'rgba(76,175,80,0.1)', 
+          backgroundColor: gradTPM, 
           fill: true, 
-          tension: 0.4 
+          tension: 0.4,
+          pointBackgroundColor: '#4CAF50',
+          pointBorderColor: '#fff',
+          pointHoverRadius: 6
         },
         { 
           label: 'Meta Diária', 
@@ -731,12 +800,20 @@ function renderForcaCharts(m) {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } } },
+      interaction: { intersect: false, mode: 'index' },
+      scales: { 
+        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
+        x: { grid: { display: false } }
+      },
       plugins: { legend: { labels: { color: '#8B949E' } } }
     }
   });
 
   // TPS Chart
+  const gradTPS = ctxTPS.getContext('2d').createLinearGradient(0, 0, 0, 300);
+  gradTPS.addColorStop(0, 'rgba(33, 150, 243, 0.4)');
+  gradTPS.addColorStop(1, 'rgba(33, 150, 243, 0.0)');
+
   STATE.charts.forcaTPS = new Chart(ctxTPS, {
     type: 'line',
     data: {
@@ -746,9 +823,12 @@ function renderForcaCharts(m) {
           label: 'Realizado TPS', 
           data: m.daily.TPS, 
           borderColor: '#2196F3', 
-          backgroundColor: 'rgba(33,150,243,0.1)', 
+          backgroundColor: gradTPS, 
           fill: true, 
-          tension: 0.4 
+          tension: 0.4,
+          pointBackgroundColor: '#2196F3',
+          pointBorderColor: '#fff',
+          pointHoverRadius: 6
         },
         { 
           label: 'Meta Diária', 
@@ -761,7 +841,11 @@ function renderForcaCharts(m) {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } } },
+      interaction: { intersect: false, mode: 'index' },
+      scales: { 
+        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
+        x: { grid: { display: false } }
+      },
       plugins: { legend: { labels: { color: '#8B949E' } } }
     }
   });
@@ -897,6 +981,21 @@ function renderSettingsPage() {
   setValue('configDiasTrabalhados', cfg.diasTrabalhados);
   setValue('configProgAcum',        cfg.progAcum);
   renderEquipmentSettings();
+
+  // Adicionar ouvintes para atualização em tempo real (reatividade)
+  const inputs = ['configMonth', 'configMetaTotal', 'configMetaTPM', 'configMetaDistribMensal', 'configMetaTPS', 'configDiasUteis', 'configDiasTrabalhados'];
+  inputs.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.onchange = () => {
+        const val = id === 'configMonth' ? el.value : parseInt(el.value) || 0;
+        const key = id.replace('config', '').charAt(0).toLowerCase() + id.replace('config', '').slice(1);
+        STATE.config[key] = val;
+        // Não salva no DB automaticamente para evitar spam, mas atualiza o visual local
+        console.log(`Config ${key} atualizada localmente.`);
+      };
+    }
+  });
 }
 
 function setValue(id, val) {
@@ -905,6 +1004,11 @@ function setValue(id, val) {
 }
 
 async function saveSettings() {
+  const btn = document.querySelector('.btn-save-settings');
+  const originalHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Salvando...';
+
   STATE.config.month           = document.getElementById('configMonth').value;
   STATE.config.metaTotal       = parseInt(document.getElementById('configMetaTotal').value) || 0;
   STATE.config.metaTPM          = parseInt(document.getElementById('configMetaTPM').value)    || 0;
@@ -929,10 +1033,13 @@ async function saveSettings() {
     });
     if (error) throw error;
     saveToStorage();
-    showStatus('settingsStatus', '✅ Configurações salvas no Supabase!', 'success');
+    showToast('Configurações salvas no Supabase!');
     renderDashboard();
   } catch (err) {
-    showStatus('settingsStatus', '🚨 Erro ao salvar no banco: ' + err.message, 'error');
+    showToast('Erro ao salvar no banco: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
   }
 }
 
@@ -984,7 +1091,9 @@ function addManualEntry(area) {
 
 async function saveManualEntries(area) {
   const containerId = area === 'distrib' ? 'manualEntriesDistrib' : 'manualEntriesForca';
-  const statusId = area === 'distrib' ? 'manualStatusDistrib' : 'manualStatusForca';
+  const btn = document.querySelector(`.btn-save-entries[onclick*="${area}"]`);
+  const originalHtml = btn.innerHTML;
+  
   const entries = document.querySelectorAll(`#${containerId} .manual-entry`);
   
   let newRecords = [];
@@ -1008,6 +1117,9 @@ async function saveManualEntries(area) {
 
   if (newRecords.length === 0) return;
 
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Salvando...';
+
   try {
     const { data, error } = await sb.from('production_records').insert(newRecords).select();
     if (error) throw error;
@@ -1019,13 +1131,23 @@ async function saveManualEntries(area) {
         desc: r.description, area: r.area, coreType: r.core_type, source: r.origin
       });
     });
-
-    showStatus(statusId, `✅ ${data.length} registros salvos!`, 'success');
+    
+    showToast(`${data.length} registros salvos com sucesso!`);
     document.getElementById(containerId).innerHTML = '';
     addManualEntry(area);
     renderDataTable();
+    
+    // Highlight first row as it's the newest
+    setTimeout(() => {
+      const firstRow = document.querySelector('#dataTableBody tr');
+      if (firstRow) firstRow.classList.add('row-update-flash');
+    }, 100);
+
   } catch (err) {
-    showStatus(statusId, '🚨 Erro: ' + err.message, 'error');
+    showToast('Erro ao salvar: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
   }
 }
 
